@@ -69,7 +69,7 @@ Converts spoken meeting audio to text. Groq's Whisper implementation is used for
 
 The extraction backbone. Reads raw, unstructured meeting text and produces a typed task list with assignees, deadlines, urgency scores (1–5), blocker flags, and status. This is the data layer that all downstream agents use.
 
-Key extraction logic:
+Key extraction:
 - Urgency 5 = critical blocker, 4 = must do this week, 3 = normal, 2 = low, 1 = someday
 - `is_blocker = true` if the task blocks another task or the event itself from proceeding
 - All output is Zod-validated before being used downstream
