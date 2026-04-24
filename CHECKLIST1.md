@@ -1,96 +1,84 @@
-# Build Checklist
+# Dev 1 Checklist — Backend / AI Pipeline
 
----
-
-## Dev 1 — Backend / AI Pipeline
-
-### ✅ Done
-- [x] `groq-sdk` + `zod` installed
-- [x] `lib/types.ts` — base contract (`Event`, `Task`, `Meeting`, `ProcessResponse`)
-- [x] `lib/groq.ts` — `transcribeAudio(file)` → transcript string
-- [x] `app/api/process/route.ts` — POST audio + event_id → Groq transcript → saved to `meetings` table
-
-### ✅ Done — Claude pipeline
-- [x] `npm install @anthropic-ai/sdk`
-- [x] `lib/claude.ts` — Meeting Agent: transcript → tasks + decisions (Zod-validated JSON)
-- [x] `lib/claude.ts` — Attention Routing Agent: state → 4 role briefings (secretary / oc / cc_vcc / exco)
-- [x] `lib/claude.ts` — Document Agent: transcript + state → minutes draft
+## ✅ Done
+- [x] `lib/groq.ts` — Transcription Agent: audio → transcript (lazy-init, build-safe)
+- [x] `lib/claude.ts` — Meeting Agent: transcript → tasks + decisions (Zod-validated)
+- [x] `lib/claude.ts` — Attention Routing Agent: state → 4 role briefings
+- [x] `lib/claude.ts` — Document Agent: state + transcript → minutes draft
 - [x] `lib/claude.ts` — Risk Agent: state → risk signals array
 - [x] `lib/claude.ts` — Query Agent: NL question + tasks → plain-English answer
-- [x] `app/api/process/route.ts` — full chain: Groq → extract → route → save tasks + meeting to Supabase
-- [x] `app/api/query/route.ts` — POST question + optional event_id → Claude answer over task rows
-- [x] `lib/types.ts` — unified: `Event`, `Task`, `Meeting`, `Briefings`, `RiskSignal`, `ExtractionResult`, `ProcessResponse`, `QueryResponse`
+- [x] `app/api/process/route.ts` — full chain: audio → Groq → Claude → Supabase → `ProcessResponse`
+- [x] `app/api/query/route.ts` — POST question + optional event_id → answer
+- [x] `lib/types.ts` — all 8 interfaces unified, build-clean
+- [x] `supabase/migrations/initialsetup.sql` — events + meetings + tasks + RLS
+- [x] Build passes ✓ | TypeScript clean ✓
 
-### 🔄 Next — Supabase
-- [ ] Run migration SQL in Supabase dashboard (events + meetings + tasks + RLS policies)
-- [ ] Add `briefings jsonb`, `risks jsonb`, `minutes_draft text` columns to `meetings` table
-- [ ] Seed demo data: 3 SPSU events, believable tasks, 1 blocker, 1 urgency-5 task, 1 cross-event conflict
+## 🔥 Critical — fix before anything else works
 
-### ⏳ Query lane
-- [ ] `app/api/query/route.ts` — POST `{ question, event_id? }` → NL answer (Genspark adapter or Claude fallback)
+### Migration is incomplete
+`meetings` table is missing 3 columns that `route.ts` already writes to.
+Run this in Supabase SQL editor now:
+```sql
+alter table meetings
+  add column briefings   jsonb,
+  add column risks       jsonb,
+  add column minutes_draft text;
+```
+Without this: every `/api/process` call 500s on the insert.
 
-### 🚀 Stretch
-- [ ] Validate Claude JSON output with Zod schema before saving
-- [ ] Retry logic if Claude returns malformed JSON
-- [ ] `/api/process` streaming response for long transcripts
+### Seed demo events with known IDs
+`mock-data.ts` uses text IDs (`evt-001` etc). Real Supabase uses UUIDs.
+Either:
+- **Option A (easier):** seed events with fixed UUIDs and update mock-data.ts to match
+- **Option B:** seed events, then Dev 2 reads real IDs from Supabase instead of hardcoding
+
+Recommended Option A. Run:
+```sql
+insert into events (id, name, event_date, org_id, status) values
+  ('a1b2c3d4-0001-0001-0001-000000000001', 'Orientation Camp 2026', '2026-05-10', 'demo-org', 'active'),
+  ('a1b2c3d4-0002-0002-0002-000000000002', 'Freshmen Social Night', '2026-05-17', 'demo-org', 'active'),
+  ('a1b2c3d4-0003-0003-0003-000000000003', 'Leadership Summit',     '2026-06-01', 'demo-org', 'active');
+```
+Then update `lib/mock-data.ts` ids to match (tell Dev 2).
+
+### Add missing env key
+`GROQ_API_KEY` not in `.env.example`. Add it so teammates know it's required.
+
+## 🔄 Next — end-to-end test
+- [ ] Add both API keys to `.env.local`
+- [ ] Upload a real audio file via `/test` page → verify full `ProcessResponse` JSON
+- [ ] Confirm tasks + briefings + risks + minutes appear in response
+- [ ] Check Supabase dashboard: rows in `meetings` and `tasks` after upload
+
+## 🔄 Next — demo data
+- [ ] Write 3 sample SPSU meeting note fixtures as text files: `data/demo/notes-*.txt`
+- [ ] Test extraction on all 3 — verify urgency inference, blocker detection
+- [ ] Seed ~8 tasks into `tasks` table matching seeded event IDs (for Dev 2 to test dashboard reads without needing an actual audio upload)
+
+## ⏳ Later
+- [ ] Add update RLS policy on `tasks` (currently only insert — needed for status changes)
+- [ ] Handle Claude JSON parse failures gracefully (retry once, then 422)
+- [ ] Test `/api/query` with seeded tasks via `/test` page
+
+## 🚀 Stretch
+- [ ] Retry logic on Zod parse failure
+- [ ] Streaming `/api/process` for long recordings
 - [ ] Cross-event conflict detection in Risk Agent
 
-### 🔗 What Dev 2 is waiting on
-- `app/api/process/route.ts` full response shape (transcript + tasks + briefings + risks + minutes_draft) — **unblock first**
-- Supabase schema live — needed for real data reads on dashboard
-- Demo seed data — needed for a believable rehearsal
+## 🔗 What unblocks Dev 2
+| Dev 1 action | Dev 2 unlocked |
+|---|---|
+| Fix `meetings` columns | `/api/process` stops 500ing |
+| Seed events with fixed UUIDs | Dev 2 wires real reads |
+| Seed tasks rows | Dev 2 replaces mock data |
+| Share event UUIDs | Dev 2 updates `mock-data.ts` |
 
-### Notes
-- All Claude calls server-side only, never client
-- Log: endpoint, event_id, tasks extracted, latency — per AGENTS.md §7.6
-- No `any` — strict TypeScript throughout
-- Validate Claude JSON before touching Supabase
-
----
-
-# Frontend Build Checklist
-
-## ✅ Completed (Dev 2)
-- [x] shadcn/ui init with dark premium black/white theme
-- [x] lib/types.ts — canonical handoff contract
-- [x] AudioUpload.tsx — drag-drop file picker + POST to `/api/process`
-- [x] TaskTable.tsx — urgency-sorted, blocker badges, status colors
-- [x] BriefingTabs.tsx — 4 role briefings with loading states
-- [x] RiskBanner.tsx — high/medium severity signals
-- [x] MinutesPreview.tsx — secretary doc draft + copy button
-- [x] Dashboard home page — event cards grid, cross-event risk overview
-- [x] Event detail page — task table + briefings + minutes preview
-- [x] Dashboard layout — sticky header with Clerk UserButton
-- [x] Mock data — 3 realistic SPSU events, 2 blockers, 3 risk signals
-
-## 🔄 In Progress (Dev 2)
-- [ ] Wire AudioUpload to `/api/process` real response (pending Dev 1 endpoint)
-- [ ] Add task review modal before publish (edit, confirm, save)
-- [ ] Connect dashboard to Supabase real event/task reads
-- [ ] Implement task edit/status update UI (mark done, blocked, etc.)
-
-## ⏳ Next (Dev 2)
-- [ ] Add task search/filter on event detail page
-- [ ] Add query input panel (Genspark integration or adapter)
-- [ ] Cross-event person workload view (summary of who's overloaded)
-- [ ] Mobile responsive refinement
-- [ ] Empty states for no events / no tasks / no briefings
-- [ ] Loading skeleton states for real data fetch
-
-## 🚀 Stretch (if time)
-- [ ] Task deadline inline edit
-- [ ] Drag-drop task status workflow
-- [ ] Export minutes to markdown/docx
-- [ ] Real-time Supabase realtime updates
-- [ ] Dark mode toggle (currently dark-only)
-
-## 🔗 Blockers / Dependencies
-- `/api/process` endpoint (Dev 1) — needed for AudioUpload to work end-to-end
-- Supabase schema (Dev 1) — needed to wire real reads
-- Genspark integration (Dev 3) — needed for query lane
-
-## Notes
-- All components accept mock data and Supabase-ready interfaces
-- No `any` types; all TypeScript strict
-- shadcn/ui base-nova, no custom colors (semantic tokens only)
-- Caveman code style: terse, direct, no overbuilt abstractions
+## Agent map (all 6 implemented)
+```
+audio → [Transcription] → transcript
+transcript → [Meeting] → tasks + decisions
+tasks → [Attention Routing] → 4 briefings
+transcript + tasks → [Document] → minutes draft
+tasks → [Risk] → risk signals
+question + tasks → [Query] → plain-English answer
+```

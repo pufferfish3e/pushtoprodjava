@@ -2,7 +2,9 @@ import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import type { ExtractionResult, Briefings, RiskSignal, Task } from '@/lib/types'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+function getClient() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+}
 const MODEL = 'claude-sonnet-4-6'
 
 // Strip markdown fences Claude sometimes wraps around JSON
@@ -22,7 +24,7 @@ const TaskSchema = z.object({
   assignee: z.string(),
   task: z.string(),
   deadline: z.string().nullable(),
-  urgency: z.number().int().min(1).max(5),
+  urgency: z.number().int().min(1).max(5).transform(n => n as 1 | 2 | 3 | 4 | 5),
   status: z.enum(['pending', 'in_progress', 'completed', 'blocked']).default('pending'),
   is_blocker: z.boolean(),
   notes: z.string(),
@@ -51,7 +53,7 @@ const RoutingSchema = z.object({
 // --- Meeting Agent ---
 // transcript → structured tasks + decisions
 export async function extractMeetingState(transcript: string): Promise<ExtractionResult> {
-  const msg = await client.messages.create({
+  const msg = await getClient().messages.create({
     model: MODEL,
     max_tokens: 2048,
     system: `You are a meeting extraction agent for SPSU (Singapore Polytechnic Students' Union).
@@ -76,7 +78,7 @@ export async function generateOutputs(
   state: ExtractionResult,
   eventName: string,
 ): Promise<{ briefings: Briefings; risks: RiskSignal[]; minutes_draft: string }> {
-  const msg = await client.messages.create({
+  const msg = await getClient().messages.create({
     model: MODEL,
     max_tokens: 4096,
     system: `You are an AI coordination layer for SPSU student union events.
@@ -106,7 +108,7 @@ Respond with valid JSON only. No markdown, no explanation.`,
 // --- Query Agent ---
 // NL question + task rows → plain-English answer
 export async function answerQuery(question: string, tasks: Task[]): Promise<string> {
-  const msg = await client.messages.create({
+  const msg = await getClient().messages.create({
     model: MODEL,
     max_tokens: 512,
     system: `You are a query agent for an SPSU event coordination tool.
