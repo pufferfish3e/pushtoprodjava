@@ -95,7 +95,7 @@ function ResultRow({ label, result }: { label: string; result: Result }) {
 export default function TestPage() {
   // /api/process
   const fileRef = useRef<HTMLInputElement>(null)
-  const [eventId, setEventId] = useState("evt-001")
+  const [eventId, setEventId] = useState("a1b2c3d4-0001-0001-0001-000000000001")
   const [processResult, setProcessResult] = useState<Result>({ status: "idle" })
 
   // /api/query
@@ -204,7 +204,7 @@ export default function TestPage() {
                 value={eventId}
                 onChange={(e) => setEventId(e.target.value)}
                 placeholder="event_id"
-                className="h-8 text-xs w-36 font-mono"
+                className="h-8 text-xs w-80 font-mono"
               />
               <span className="text-xs text-muted-foreground self-center">event_id</span>
             </div>

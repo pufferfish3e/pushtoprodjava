@@ -1,7 +1,7 @@
--- 24 Apr 2026 — full schema, run once on a fresh project
+-- 24 Apr 2026 — full schema, idempotent (safe to re-run)
 
 -- 1. events
-create table events (
+create table if not exists events (
   id uuid default gen_random_uuid() primary key,
   name text not null,
   event_date date,
@@ -12,7 +12,7 @@ create table events (
 );
 
 -- 2. meetings — includes Claude output columns
-create table meetings (
+create table if not exists meetings (
   id uuid default gen_random_uuid() primary key,
   event_id uuid references events(id) on delete cascade,
   transcript text not null,
@@ -23,7 +23,7 @@ create table meetings (
 );
 
 -- 3. tasks
-create table tasks (
+create table if not exists tasks (
   id uuid default gen_random_uuid() primary key,
   event_id uuid references events(id) on delete cascade,
   assignee text,
@@ -42,7 +42,15 @@ alter table events  enable row level security;
 alter table meetings enable row level security;
 alter table tasks   enable row level security;
 
--- 5. Policies
+-- 5. Policies (drop first so re-runs don't fail)
+drop policy if exists "auth read events"    on events;
+drop policy if exists "auth write events"   on events;
+drop policy if exists "auth read meetings"  on meetings;
+drop policy if exists "auth write meetings" on meetings;
+drop policy if exists "auth read tasks"     on tasks;
+drop policy if exists "auth write tasks"    on tasks;
+drop policy if exists "auth update tasks"   on tasks;
+
 create policy "auth read events"    on events   for select using (auth.role() = 'authenticated');
 create policy "auth write events"   on events   for insert with check (auth.role() = 'authenticated');
 
@@ -59,11 +67,12 @@ create policy "auth update tasks"   on tasks    for update using (auth.role() = 
 insert into events (id, name, event_date, org_id, status) values
   ('a1b2c3d4-0001-0001-0001-000000000001', 'Orientation Camp 2026',  '2026-05-10', 'demo-org', 'active'),
   ('a1b2c3d4-0002-0002-0002-000000000002', 'Freshmen Social Night',  '2026-05-17', 'demo-org', 'active'),
-  ('a1b2c3d4-0003-0003-0003-000000000003', 'Leadership Summit',      '2026-06-01', 'demo-org', 'active');
+  ('a1b2c3d4-0003-0003-0003-000000000003', 'Leadership Summit',      '2026-06-01', 'demo-org', 'active')
+on conflict (id) do nothing;
 
 -- ─────────────────────────────────────────────
 -- SEED — demo tasks (8 rows across 3 events)
--- Covers: 1 blocker, 1 urgency-5, 1 cross-event person (Marcus Tan)
+-- Covers: blockers, urgency-5, cross-event overload (Marcus Tan)
 -- ─────────────────────────────────────────────
 insert into tasks (event_id, assignee, task, deadline, urgency, status, is_blocker, notes) values
   -- Orientation Camp
@@ -78,4 +87,5 @@ insert into tasks (event_id, assignee, task, deadline, urgency, status, is_block
   ('a1b2c3d4-0002-0002-0002-000000000002', 'Wei Jie Tan',  'Prepare slide deck for icebreaker segment',            '2026-05-12', 2, 'pending',     false, ''),
 
   -- Leadership Summit
-  ('a1b2c3d4-0003-0003-0003-000000000003', 'Divya Menon',  'Confirm keynote speaker availability and send brief',  '2026-05-10', 4, 'pending',     false, 'Speaker tentatively agreed, formal confirmation pending.');
+  ('a1b2c3d4-0003-0003-0003-000000000003', 'Divya Menon',  'Confirm keynote speaker availability and send brief',  '2026-05-10', 4, 'pending',     false, 'Speaker tentatively agreed, formal confirmation pending.')
+on conflict do nothing;
