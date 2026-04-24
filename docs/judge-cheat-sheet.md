@@ -2,74 +2,103 @@
 
 ## One-line framing
 
-"This comes from a real SPSU workflow problem: task ownership and event risk are buried inside meeting documents, so CCs and VCCs only notice issues after it is already late."
+"Most AI meeting tools give everyone the same summary. We turn one meeting into four role-specific operational briefings plus a ready-to-edit minutes draft — so each person sees only what they need to act on."
 
-## Why this is a real internal workflow problem
+## What is actually built and working
 
-- SPSU runs many student events with volunteer committees
-- multiple events can be active at the same time
-- the source of truth is usually notes, minutes, PDFs, chats, and trackers
-- the people leading events do not get a live view of blockers and urgency
-- secretaries do high-effort documentation work, but the useful task data stays trapped in documents
+- Secretary uploads or records meeting audio
+- Transcription Agent (Groq Whisper) converts audio to text
+- Meeting Agent (Claude) extracts structured tasks, owners, deadlines, urgency, blockers
+- Attention Routing Agent (Claude) generates 4 distinct briefings: Secretary / OC / CC-VCC / EXCO
+- Document Agent (Claude) produces a formal minutes draft the secretary can review immediately
+- Risk Agent (Claude) surfaces overloaded people, unowned blockers, deadline risks
+- Dashboard shows all active events with live blockers and cross-event risk signals
+- Event detail page shows urgency-sorted task table, 4 role briefing tabs, minutes preview
+- Task status can be updated inline (Pending → In Progress → Done / Blocked)
+- Query Agent answers plain-English questions over live task data
+- All data persisted in Supabase with RLS
 
-## Why Claude + Genspark is the right pairing
+## The demo flow (practice this sequence)
 
-- Claude is strong at turning messy, unstructured meeting notes into structured tasks, blockers, and urgency
-- Genspark is strong as a natural-language layer over existing task data
-- together they do two different jobs:
-  - Claude extracts and structures the operational truth
-  - Genspark makes that truth easy to ask about in plain English
+1. Open dashboard — show 3 active SPSU events, risk banners, cross-event overload signal
+2. Click an event — show urgency-sorted tasks with blocker highlighted
+3. Upload a meeting audio clip (use `data/demo/notes-orientation-camp.txt` converted, or a real recording)
+4. Pipeline runs: transcription → extraction → briefings → risks → minutes (6-12 seconds)
+5. Tasks update live on the page
+6. Open Briefing Tabs — show Secretary vs OC vs CC/VCC vs EXCO tabs, each with different focus
+7. Show minutes draft — point out secretary can copy and finalize this immediately
+8. Ask a question: "What is still blocking the orientation camp?" — plain-English answer appears
 
-## What we intentionally cut for the hackathon
+## The "aha" moment to land
 
-- Telegram alerts
-- scheduled background agents
-- audio transcription
-- polished document export
-- secondary calendar-heavy views
+> "One meeting. Four different briefings. One formal draft. Each person sees what matters to their role — not the same cluttered transcript."
 
-We cut those on purpose so the demo stays reliable:
+## Why this is different from Notion AI / Zoom AI / generic summarizers
 
-`notes -> extraction -> dashboard -> query`
+Those tools create one summary for everyone. Ours classifies and routes information by role:
+- Secretary gets documentation gaps and ambiguity flags
+- OC gets next actions this week and what is blocked
+- CC/VCC gets blockers and intervention points
+- EXCO gets cross-event risk and overloaded people
 
-## Why this stack makes sense right now
+That is a fundamentally different output — not a better summary, a role-aware routing layer.
 
-As of April 24, 2026:
+## Agent architecture (show this if asked about the AI system)
 
-- Next.js 16 officially leans into clearer request boundaries with `proxy.ts` and AI-assisted debugging workflows, which is useful for a fast agent-friendly app
-- Clerk's current Supabase guidance recommends native integration plus RLS, which keeps auth simple and secure for a hackathon app
-- Supabase's current docs emphasize Realtime plus AI workflows, which fits a live ops dashboard
-- Anthropic's current model lineup includes stronger Sonnet-tier models for coding and structured extraction, which fits our meeting-notes use case
+```
+audio  ──► [Transcription Agent — Groq Whisper]  ──► transcript
+           [Meeting Agent — Claude]              ──► tasks + decisions
+           [Attention Routing Agent — Claude]    ──► 4 role briefings  ← main differentiator
+           [Document Agent — Claude]             ──► minutes draft
+           [Risk Agent — Claude]                 ──► risk signals
+question ► [Query Agent — Claude]               ──► plain-English answer
+```
 
 ## Clean judge answers
 
 ### Why not just use Notion, Asana, or a spreadsheet?
 
-Those tools still expect someone to manually convert meeting discussion into tasks. Our value is that the task list is extracted automatically from notes the team already takes.
+Those tools still require someone to manually convert meeting discussion into tasks. Our value is that the extraction happens automatically from audio the team already records.
 
 ### What if the AI gets a task wrong?
 
-The app is designed around human review before publish. Claude handles the heavy lift, and the secretary or organizer sanity-checks the output before it becomes the dashboard truth.
+Every task is visible in the review UI before and after saving. The secretary sanity-checks the output. Claude handles the heavy lift; humans stay in control.
 
 ### Why is this better than just reading minutes?
 
-Minutes are passive documents. This turns them into active coordination data. Instead of opening a PDF and digging, a lead can see blockers and ask a direct question immediately.
+Minutes are passive documents. This turns them into live coordination data. Instead of opening a PDF, a CC can see blockers and ask a direct question immediately.
 
-### Why use Genspark at all?
+### Why four briefings instead of one?
 
-Because leaders often do not want raw rows first. They want a plain-English answer like "what is still unresolved for Appreciation Dinner?" Genspark is the query layer, not a gimmick.
+Because a committee member doing logistics does not need the EXCO risk escalation signals, and the EXCO does not need the secretary's documentation ambiguity checklist. Showing everyone everything is the problem we are solving.
 
-### Why is this credible in a short hackathon?
+### Why Groq for transcription?
 
-Because the scope is narrow. We are not trying to automate the whole organization. We are solving one specific gap: turning meeting notes into live event visibility.
+Groq runs Whisper at very low latency. The transcription step completes in 2-4 seconds for a short clip, which keeps the demo tight.
+
+### Is this credible in a hackathon?
+
+The scope is narrow by design. One upload flow, one event page, four briefings, one minutes draft, one query. Everything else was intentionally cut to make this part reliable.
+
+## What was intentionally cut
+
+- Telegram / push alerts
+- Scheduled background agents
+- Full document export (PDF/DOCX)
+- Calendar views
+- Real-time collaborative editing
+- Live in-meeting transcription streaming
+
+## Stack summary (if asked)
+
+- Next.js 16 App Router, React 19, Tailwind v4, shadcn/ui
+- Clerk for auth, Supabase Postgres with RLS for data
+- Groq (Whisper) for transcription, Claude Sonnet 4.6 for all AI agents
+- Deployed on Vercel
 
 ## Trend notes with sources
 
-- Next.js 16 was released on October 21, 2025: https://nextjs.org/blog/next-16
-- Next.js Proxy docs were updated on March 31, 2026: https://nextjs.org/docs/app/getting-started/proxy
-- Clerk's Supabase integration guide was updated on April 17, 2026: https://clerk.com/docs/guides/development/integrations/databases/supabase
-- Clerk's Next.js reference was updated on April 17, 2026: https://clerk.com/docs/reference/nextjs/overview
-- Anthropic announced Claude Sonnet 4.6 on February 17, 2026: https://www.anthropic.com/research/claude-sonnet-4-6
-- Anthropic models overview: https://platform.claude.com/docs/en/about-claude/models/overview
-- Supabase docs: https://supabase.com/docs
+- Next.js 16: https://nextjs.org/blog/next-16
+- Clerk + Supabase guide (updated Apr 17 2026): https://clerk.com/docs/guides/development/integrations/databases/supabase
+- Claude Sonnet 4.6 (announced Feb 17 2026): https://www.anthropic.com/research/claude-sonnet-4-6
 - Supabase AI docs: https://supabase.com/docs/guides/ai

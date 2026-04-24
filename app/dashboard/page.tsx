@@ -2,22 +2,11 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RiskBanner } from "@/components/RiskBanner"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { deriveRisks } from "@/lib/derive-risks"
 import { MOCK_EVENTS, MOCK_TASKS, MOCK_RISKS } from "@/lib/mock-data"
-import type { Event } from "@/lib/types"
+import type { Event, Task } from "@/lib/types"
 import { CalendarDays, Users, AlertTriangle } from "lucide-react"
-
-function taskCountFor(eventId: string) {
-  return MOCK_TASKS.filter((t) => t.event_id === eventId).length
-}
-
-function blockerCountFor(eventId: string) {
-  return MOCK_TASKS.filter((t) => t.event_id === eventId && t.is_blocker).length
-}
-
-function maxUrgencyFor(eventId: string) {
-  const tasks = MOCK_TASKS.filter((t) => t.event_id === eventId)
-  return tasks.length ? Math.max(...tasks.map((t) => t.urgency)) : 0
-}
 
 const STATUS_VARIANT: Record<Event["status"], "default" | "secondary" | "outline"> = {
   planning: "outline",
@@ -25,44 +14,81 @@ const STATUS_VARIANT: Record<Event["status"], "default" | "secondary" | "outline
   completed: "secondary",
 }
 
-export default function DashboardPage() {
-  const events = MOCK_EVENTS
-  const risks = MOCK_RISKS
+function buildStats(tasks: Task[], eventId: string) {
+  const evtTasks = tasks.filter(t => t.event_id === eventId)
+  return {
+    count: evtTasks.length,
+    blockers: evtTasks.filter(t => t.is_blocker && t.status !== "completed").length,
+    maxUrgency: evtTasks.length ? Math.max(...evtTasks.map(t => t.urgency)) : 0,
+  }
+}
+
+export default async function DashboardPage() {
+  let events: Event[] = []
+  let tasks: Task[] = []
+  let fromDB = false
+
+  try {
+    const supabase = createServerSupabaseClient()
+    const [{ data: evts }, { data: tks }] = await Promise.all([
+      supabase.from("events").select("*").order("event_date", { ascending: true }),
+      supabase.from("tasks").select("*"),
+    ])
+    if (evts?.length) {
+      events = evts as Event[]
+      tasks = (tks ?? []) as Task[]
+      fromDB = true
+    }
+  } catch {
+    // fall through to mock
+  }
+
+  if (!fromDB) {
+    events = MOCK_EVENTS
+    tasks = MOCK_TASKS
+  }
+
+  const risks = fromDB ? deriveRisks(tasks) : MOCK_RISKS
+  const active = events.filter(e => e.status !== "completed")
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Events</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Cross-event overview — active coordination across {events.filter((e) => e.status === "active").length} events
-        </p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Events</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {active.length} active · cross-event coordination overview
+          </p>
+        </div>
+        {!fromDB && (
+          <span className="text-xs text-muted-foreground border border-border rounded px-2 py-1">
+            mock data
+          </span>
+        )}
       </div>
 
       {risks.length > 0 && (
-        <div>
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        <section>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Risk Signals
-          </h2>
+          </p>
           <RiskBanner risks={risks} />
-        </div>
+        </section>
       )}
 
-      <div>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+      <section>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Active Events
-        </h2>
+        </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {events.map((event) => {
-            const taskCount = taskCountFor(event.id)
-            const blockerCount = blockerCountFor(event.id)
-            const maxUrgency = maxUrgencyFor(event.id)
-
+          {events.map(event => {
+            const { count, blockers, maxUrgency } = buildStats(tasks, event.id)
             return (
               <Link key={event.id} href={`/dashboard/events/${event.id}`}>
-                <Card className="group transition-colors hover:bg-accent/50 cursor-pointer h-full">
+                <Card className="group h-full cursor-pointer transition-colors hover:bg-accent/50">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-sm font-semibold leading-snug group-hover:text-foreground">
+                      <CardTitle className="text-sm font-semibold leading-snug">
                         {event.name}
                       </CardTitle>
                       <Badge variant={STATUS_VARIANT[event.status]} className="shrink-0 text-xs">
@@ -74,21 +100,21 @@ export default function DashboardPage() {
                     <div className="flex flex-col gap-2 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <CalendarDays className="size-3.5" />
-                        <span>{event.event_date}</span>
+                        <span>{event.event_date ?? "TBD"}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Users className="size-3.5" />
-                        <span>{taskCount} task{taskCount !== 1 ? "s" : ""}</span>
+                        <span>{count} task{count !== 1 ? "s" : ""}</span>
                       </div>
-                      {blockerCount > 0 && (
+                      {blockers > 0 && (
                         <div className="flex items-center gap-1.5 text-destructive">
                           <AlertTriangle className="size-3.5" />
-                          <span>{blockerCount} blocker{blockerCount !== 1 ? "s" : ""}</span>
+                          <span>{blockers} blocker{blockers !== 1 ? "s" : ""}</span>
                         </div>
                       )}
                       {maxUrgency === 5 && (
                         <div className="flex items-center gap-1.5 text-destructive font-medium">
-                          <span className="size-1.5 rounded-full bg-destructive inline-block" />
+                          <span className="inline-block size-1.5 rounded-full bg-destructive" />
                           Critical task present
                         </div>
                       )}
@@ -99,7 +125,7 @@ export default function DashboardPage() {
             )
           })}
         </div>
-      </div>
+      </section>
     </div>
   )
 }
