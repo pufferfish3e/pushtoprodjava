@@ -1,8 +1,15 @@
 import type { Event, Task, Briefings, RiskSignal } from "./types"
 
+// IDs match supabase/migrations/initialsetup.sql seed
+export const EVT = {
+  orientation: "a1b2c3d4-0001-0001-0001-000000000001",
+  socialnight:  "a1b2c3d4-0002-0002-0002-000000000002",
+  summit:       "a1b2c3d4-0003-0003-0003-000000000003",
+} as const
+
 export const MOCK_EVENTS: Event[] = [
   {
-    id: "evt-001",
+    id: EVT.orientation,
     name: "Orientation Camp 2026",
     event_date: "2026-05-10",
     org_id: "demo-org",
@@ -10,7 +17,7 @@ export const MOCK_EVENTS: Event[] = [
     created_at: "2026-04-01T00:00:00Z",
   },
   {
-    id: "evt-002",
+    id: EVT.socialnight,
     name: "Freshmen Social Night",
     event_date: "2026-05-17",
     org_id: "demo-org",
@@ -18,8 +25,8 @@ export const MOCK_EVENTS: Event[] = [
     created_at: "2026-04-01T00:00:00Z",
   },
   {
-    id: "evt-003",
-    name: "Leadership Summit",
+    id: EVT.summit,
+    name: "Leadership Summit 2026",
     event_date: "2026-06-01",
     org_id: "demo-org",
     status: "active",
@@ -29,20 +36,31 @@ export const MOCK_EVENTS: Event[] = [
 
 export const MOCK_TASKS: Task[] = [
   {
-    id: "t-001",
-    event_id: "evt-001",
+    id: "00000000-0000-0000-0001-000000000001",
+    event_id: EVT.orientation,
     assignee: "Wei Ling",
     task: "Confirm venue booking with SP management",
     deadline: "2026-04-28",
     urgency: 5,
     status: "pending",
     is_blocker: true,
-    notes: "Hall A still unconfirmed — blocks logistics planning",
+    notes: "Hall A unconfirmed — blocks all logistics planning",
   },
   {
-    id: "t-002",
-    event_id: "evt-001",
-    assignee: "Ravi Kumar",
+    id: "00000000-0000-0000-0001-000000000002",
+    event_id: EVT.orientation,
+    assignee: "Wei Ling",
+    task: "Submit budget proposal to EXCO",
+    deadline: "2026-04-27",
+    urgency: 5,
+    status: "blocked",
+    is_blocker: true,
+    notes: "Blocked on venue cost confirmation",
+  },
+  {
+    id: "00000000-0000-0000-0001-000000000003",
+    event_id: EVT.orientation,
+    assignee: "Ravi",
     task: "Finalise participant registration form",
     deadline: "2026-04-30",
     urgency: 4,
@@ -51,9 +69,9 @@ export const MOCK_TASKS: Task[] = [
     notes: "",
   },
   {
-    id: "t-003",
-    event_id: "evt-001",
-    assignee: "Sarah Tan",
+    id: "00000000-0000-0000-0001-000000000004",
+    event_id: EVT.orientation,
+    assignee: "Sarah",
     task: "Arrange transport for day-trip segment",
     deadline: "2026-05-03",
     urgency: 3,
@@ -62,20 +80,9 @@ export const MOCK_TASKS: Task[] = [
     notes: "",
   },
   {
-    id: "t-004",
-    event_id: "evt-001",
-    assignee: "Wei Ling",
-    task: "Submit budget proposal to EXCO",
-    deadline: "2026-04-27",
-    urgency: 5,
-    status: "blocked",
-    is_blocker: true,
-    notes: "Waiting on venue cost confirmation",
-  },
-  {
-    id: "t-005",
-    event_id: "evt-001",
-    assignee: "Hafiz Abdullah",
+    id: "00000000-0000-0000-0001-000000000005",
+    event_id: EVT.orientation,
+    assignee: "Hafiz",
     task: "Design camp schedule and ice-breaker rundown",
     deadline: "2026-05-05",
     urgency: 2,
@@ -84,10 +91,10 @@ export const MOCK_TASKS: Task[] = [
     notes: "",
   },
   {
-    id: "t-006",
-    event_id: "evt-002",
-    assignee: "Priya Nair",
-    task: "Secure DJ / live band booking",
+    id: "00000000-0000-0000-0002-000000000001",
+    event_id: EVT.socialnight,
+    assignee: "Priya",
+    task: "Secure DJ or live band booking",
     deadline: "2026-05-01",
     urgency: 4,
     status: "pending",
@@ -95,20 +102,20 @@ export const MOCK_TASKS: Task[] = [
     notes: "",
   },
   {
-    id: "t-007",
-    event_id: "evt-002",
+    id: "00000000-0000-0000-0002-000000000002",
+    event_id: EVT.socialnight,
     assignee: "Wei Ling",
     task: "Set up ticketing on Eventbrite",
     deadline: "2026-04-29",
     urgency: 4,
     status: "pending",
     is_blocker: false,
-    notes: "Wei Ling also handling Orientation Camp venue — possible overload",
+    notes: "Wei Ling also on Orientation Camp — possible overload",
   },
   {
-    id: "t-008",
-    event_id: "evt-003",
-    assignee: "Ravi Kumar",
+    id: "00000000-0000-0000-0003-000000000001",
+    event_id: EVT.summit,
+    assignee: "Ravi",
     task: "Send speaker invitations",
     deadline: "2026-04-30",
     urgency: 3,
@@ -120,13 +127,13 @@ export const MOCK_TASKS: Task[] = [
 
 export const MOCK_BRIEFINGS: Briefings = {
   secretary:
-    "Meeting held 24 Apr 2026. Key outcomes: venue booking for Orientation Camp unconfirmed (blocker). Budget proposal blocked pending venue cost. Action: Wei Ling to chase SP management by 28 Apr. Ravi Kumar completing registration form by 30 Apr.",
+    "Meeting held 24 Apr 2026. Key outcomes: venue booking for Orientation Camp unconfirmed (blocker). Budget proposal blocked pending venue cost. Action: Wei Ling to chase SP management by 28 Apr. Ravi completing registration form by 30 Apr.",
   oc:
-    "Two critical blockers for Orientation Camp: venue and budget both unresolved. Transport and schedule tasks on track. Social Night ticketing assigned to Wei Ling — watch for overload risk across events.",
+    "Two critical blockers for Orientation Camp: venue and budget both unresolved. Transport and schedule on track. Social Night ticketing assigned to Wei Ling — watch for overload risk across events.",
   cc_vcc:
-    "Cross-event risk: Wei Ling assigned to both Orientation Camp venue (urgent) and Social Night ticketing. Deadline conflict possible around 28–29 Apr. Recommend CC review workload and reassign if needed.",
+    "Cross-event risk: Wei Ling assigned to Orientation Camp venue (urgency 5) and Social Night ticketing (urgency 4) with overlapping deadlines 28–29 Apr. Recommend CC review workload and reassign if needed.",
   exco:
-    "Budget proposal for Orientation Camp blocked pending venue confirmation. Cannot approve spend until Hall A booking is resolved. Escalation may be needed with SP management before 28 Apr deadline.",
+    "Budget proposal for Orientation Camp blocked pending venue confirmation. Cannot approve spend until Hall A booking resolved. Escalation may be needed with SP management before 28 Apr deadline.",
 }
 
 export const MOCK_RISKS: RiskSignal[] = [
@@ -137,7 +144,7 @@ export const MOCK_RISKS: RiskSignal[] = [
   },
   {
     type: "overloaded_person",
-    description: "Wei Ling is assigned 3 urgent tasks across 2 events with overlapping deadlines (28–29 Apr).",
+    description: "Wei Ling has 3 urgent tasks across 2 events with overlapping deadlines (28–29 Apr).",
     severity: "high",
   },
   {

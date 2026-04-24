@@ -10,6 +10,10 @@ const BodySchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not set in environment' }, { status: 500 })
+  }
+
   const body = await req.json()
   const parsed = BodySchema.safeParse(body)
 
@@ -32,7 +36,13 @@ export async function POST(req: NextRequest) {
 
   console.log(`[query] question="${question}" event_id=${event_id ?? 'all'} tasks_loaded=${tasks?.length ?? 0}`)
 
-  const answer = await answerQuery(question, tasks ?? [])
-  const response: QueryResponse = { answer }
-  return NextResponse.json(response)
+  try {
+    const answer = await answerQuery(question, tasks ?? [])
+    const response: QueryResponse = { answer }
+    return NextResponse.json(response)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[query] unhandled error', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }

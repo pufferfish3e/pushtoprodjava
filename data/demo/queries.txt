@@ -1,0 +1,18 @@
+-- Sample queries for /api/query — use on /test page or live demo
+
+-- Cross-event visibility (EXCO briefing angle)
+What is blocking the orientation camp?
+Who is overloaded across all events?
+Which event is most at risk right now?
+
+-- OC action angle
+What tasks are still pending for Freshmen Social Night?
+What needs to happen before 30 April?
+
+-- Secretary documentation angle
+Which tasks have no deadline assigned?
+What decisions were made in the orientation camp meeting?
+
+-- CC/VCC intervention angle
+Which blockers have no clear owner?
+What tasks have been stuck in pending for the longest?
