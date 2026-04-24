@@ -2,8 +2,10 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { EventDetailClient } from "@/components/EventDetailClient"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { DeleteEventButton } from "@/components/DeleteEventButton"
+import { createAdminSupabaseClient } from "@/lib/supabase/server"
 import { deriveRisks } from "@/lib/derive-risks"
+import { generatePlaceholders } from "@/lib/claude"
 import { MOCK_EVENTS, MOCK_TASKS, MOCK_BRIEFINGS, MOCK_RISKS } from "@/lib/mock-data"
 import type { Event, Task, Briefings, RiskSignal } from "@/lib/types"
 import { CalendarDays, ChevronLeft } from "lucide-react"
@@ -52,9 +54,10 @@ export default async function EventDetailPage({ params }: Props) {
   let risks: RiskSignal[] = []
   let minutes: string | null = null
   let fromDB = false
+  let isPlaceholder = false
 
   try {
-    const supabase = createServerSupabaseClient()
+    const supabase = createAdminSupabaseClient()
     const [{ data: evtData }, { data: taskData }, { data: meetingData }] = await Promise.all([
       supabase.from("events").select("*").eq("id", id).single(),
       supabase.from("tasks").select("*").eq("event_id", id).order("urgency", { ascending: false }),
@@ -78,6 +81,24 @@ export default async function EventDetailPage({ params }: Props) {
         minutes = meetingData.minutes_draft ?? null
       } else {
         risks = deriveRisks(tasks)
+      }
+
+      // No meeting data yet — generate AI placeholders
+      if (fromDB && !briefings && tasks.length === 0) {
+        try {
+          const placeholders = await generatePlaceholders(event!.name, event!.event_date)
+          tasks = placeholders.tasks.map((t, i) => ({
+            ...t,
+            id: `placeholder-${i}`,
+            event_id: id,
+          }))
+          briefings = placeholders.briefings
+          risks = placeholders.risks
+          minutes = placeholders.minutes_draft
+          isPlaceholder = true
+        } catch {
+          // Non-fatal — show empty state if placeholder generation fails
+        }
       }
     }
   } catch {
@@ -106,16 +127,19 @@ export default async function EventDetailPage({ params }: Props) {
           <ChevronLeft className="size-3.5" />
           All Events
         </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {event.name}
-          </h1>
-          <Badge variant={STATUS_VARIANT[event.status]}>{event.status}</Badge>
-          {!fromDB && (
-            <span className="text-xs text-muted-foreground border border-border rounded px-2 py-1">
-              mock data
-            </span>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              {event.name}
+            </h1>
+            <Badge variant={STATUS_VARIANT[event.status]}>{event.status}</Badge>
+            {!fromDB && (
+              <span className="text-xs text-muted-foreground border border-border rounded px-2 py-1">
+                mock data
+              </span>
+            )}
+          </div>
+          {fromDB && <DeleteEventButton eventId={id} />}
         </div>
         {event.event_date && (
           <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -132,6 +156,7 @@ export default async function EventDetailPage({ params }: Props) {
         initialBriefings={briefings}
         initialRisks={risks}
         initialMinutes={minutes}
+        isPlaceholder={isPlaceholder}
       />
     </div>
   )

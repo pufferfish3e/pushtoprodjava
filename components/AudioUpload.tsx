@@ -4,7 +4,7 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { Upload, FileAudio, X, Loader2 } from "lucide-react"
+import { Upload, FileAudio, FileText, X, Loader2 } from "lucide-react"
 import type { ProcessResponse } from "@/lib/types"
 
 interface AudioUploadProps {
@@ -12,20 +12,33 @@ interface AudioUploadProps {
   onResult: (result: ProcessResponse) => void
 }
 
-type UploadState = "idle" | "uploading" | "processing" | "done" | "error"
+type UploadState = "idle" | "uploading" | "extracting" | "formatting" | "editing" | "processing" | "done" | "error"
+
+const AUDIO_TYPES = /\.(mp3|wav|m4a|ogg|webm|flac|aac|opus)$/i
+const DOC_TYPES = /\.(pdf|txt|md)$/i
+
+function getFileKind(file: File): "audio" | "document" | "unsupported" {
+  if (AUDIO_TYPES.test(file.name) || file.type.startsWith("audio/")) return "audio"
+  if (DOC_TYPES.test(file.name) || file.type === "application/pdf" || file.type.startsWith("text/")) return "document"
+  return "unsupported"
+}
 
 export function AudioUpload({ eventId, onResult }: AudioUploadProps) {
   const [state, setState] = useState<UploadState>("idle")
   const [file, setFile] = useState<File | null>(null)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [minutes, setMinutes] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const fileKind = file ? getFileKind(file) : null
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
     setFile(f)
     setError(null)
+    setState("idle")
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -34,6 +47,7 @@ export function AudioUpload({ eventId, onResult }: AudioUploadProps) {
     if (!f) return
     setFile(f)
     setError(null)
+    setState("idle")
   }
 
   function handleDragOver(e: React.DragEvent) {
@@ -44,32 +58,103 @@ export function AudioUpload({ eventId, onResult }: AudioUploadProps) {
     setFile(null)
     setState("idle")
     setError(null)
+    setMinutes("")
     if (inputRef.current) inputRef.current.value = ""
   }
 
-  async function handleSubmit() {
+  async function extractText(): Promise<string> {
+    if (!file) throw new Error("No file selected")
+    const kind = getFileKind(file)
+
+    if (kind === "audio") {
+      setState("extracting")
+      setProgress(30)
+      const formData = new FormData()
+      formData.append("audio", file)
+      const res = await fetch("/api/transcribe", { method: "POST", body: formData })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error || "Transcription failed")
+      }
+      const { transcript } = await res.json()
+      return transcript
+    }
+
+    if (kind === "document") {
+      setState("extracting")
+      setProgress(30)
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/extract-text", { method: "POST", body: formData })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error || "Extraction failed")
+      }
+      const { text } = await res.json()
+      return text
+    }
+
+    throw new Error("Unsupported file type. Use audio (MP3, WAV, M4A) or documents (PDF, TXT).")
+  }
+
+  async function handleProcess() {
     if (!file) return
+    if (fileKind === "unsupported") {
+      setError("Unsupported file type. Use audio (MP3, WAV, M4A) or documents (PDF, TXT).")
+      return
+    }
+
     setState("uploading")
-    setProgress(20)
+    setProgress(15)
     setError(null)
 
     try {
-      const formData = new FormData()
-      formData.append("audio", file)
-      formData.append("event_id", eventId)
-      setProgress(40)
-      setState("processing")
+      const text = await extractText()
+      setProgress(60)
+      setState("formatting")
 
-      const res = await fetch("/api/process", {
+      const minutesRes = await fetch("/api/minutes", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: text, eventId }),
       })
 
+      if (minutesRes.ok) {
+        const { minutes: formatted } = await minutesRes.json()
+        setMinutes(formatted ?? text)
+      } else {
+        setMinutes(text)
+      }
+
+      setProgress(100)
+      setState("editing")
+    } catch (err) {
+      setState("error")
+      setError(err instanceof Error ? err.message : "Unknown error")
+    }
+  }
+
+  async function handleSubmitMinutes() {
+    if (!minutes.trim()) {
+      setError("Minutes cannot be empty.")
+      return
+    }
+    setState("processing")
+    setProgress(0)
+    setError(null)
+
+    try {
+      setProgress(30)
+      const res = await fetch("/api/process-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: minutes, event_id: eventId }),
+      })
       setProgress(80)
 
       if (!res.ok) {
-        const msg = await res.text()
-        throw new Error(msg || "Processing failed")
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error || "Processing failed")
       }
 
       const data: ProcessResponse = await res.json()
@@ -77,86 +162,132 @@ export function AudioUpload({ eventId, onResult }: AudioUploadProps) {
       setState("done")
       onResult(data)
     } catch (err) {
-      setState("error")
-      setError(err instanceof Error ? err.message : "Unknown error")
+      setState("editing")
+      setError(err instanceof Error ? err.message : "Processing failed")
     }
   }
 
-  const isLoading = state === "uploading" || state === "processing"
+  const isLoading = state === "uploading" || state === "extracting" || state === "formatting" || state === "processing"
+  const showEditor = state === "editing" || state === "processing" || state === "done"
+
+  const progressLabel =
+    state === "uploading" ? "Uploading…" :
+    state === "extracting" ? (fileKind === "audio" ? "Transcribing audio…" : "Extracting document text…") :
+    state === "formatting" ? "Formatting meeting minutes…" :
+    state === "processing" ? "Extracting tasks and generating briefings…" :
+    ""
+
+  const FileIcon = fileKind === "document" ? FileText : FileAudio
+  const buttonLabel = fileKind === "document" ? "Extract Content" : "Transcribe Recording"
 
   return (
     <div className="flex flex-col gap-4">
-      <div
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onClick={() => !file && inputRef.current?.click()}
-        className={cn(
-          "relative flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 transition-colors",
-          file
-            ? "cursor-default border-border bg-muted/30"
-            : "cursor-pointer border-border hover:border-foreground/30 hover:bg-muted/20"
-        )}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept="audio/*,.mp3,.wav,.m4a,.ogg"
-          className="hidden"
-          onChange={handleFileChange}
-        />
+      {!showEditor && (
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onClick={() => !file && inputRef.current?.click()}
+          className={cn(
+            "relative flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 transition-colors",
+            file
+              ? "cursor-default border-border bg-muted/30"
+              : "cursor-pointer border-border hover:border-foreground/30 hover:bg-muted/20"
+          )}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac,.aac,.pdf,.txt,.md"
+            className="hidden"
+            onChange={handleFileChange}
+          />
 
-        {file ? (
-          <>
-            <FileAudio className="size-8 text-muted-foreground" />
-            <div className="text-center">
-              <p className="text-sm font-medium text-foreground">{file.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {(file.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); clearFile() }}
-              className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          </>
-        ) : (
-          <>
-            <Upload className="size-8 text-muted-foreground" />
-            <div className="text-center">
-              <p className="text-sm font-medium text-foreground">Drop audio file or click to browse</p>
-              <p className="text-xs text-muted-foreground">MP3, WAV, M4A, OGG supported</p>
-            </div>
-          </>
-        )}
-      </div>
+          {file ? (
+            <>
+              <FileIcon className="size-8 text-muted-foreground" />
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">{file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                  {fileKind === "unsupported" && (
+                    <span className="ml-2 text-destructive">— unsupported type</span>
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); clearFile() }}
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <Upload className="size-8 text-muted-foreground" />
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">Drop file or click to browse</p>
+                <p className="text-xs text-muted-foreground">Audio: MP3, WAV, M4A, OGG · Documents: PDF, TXT</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex flex-col gap-2">
           <Progress value={progress} className="h-1" />
-          <p className="text-xs text-muted-foreground">
-            {state === "uploading" ? "Uploading…" : "Extracting tasks with AI…"}
-          </p>
+          <p className="text-xs text-muted-foreground">{progressLabel}</p>
         </div>
       )}
 
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {showEditor && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Meeting Minutes
+            </p>
+            {state !== "done" && (
+              <button
+                onClick={clearFile}
+                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+              >
+                Start over
+              </button>
+            )}
+          </div>
+          <textarea
+            value={minutes}
+            onChange={e => setMinutes(e.target.value)}
+            disabled={state === "processing" || state === "done"}
+            className="w-full min-h-72 resize-y rounded border border-border bg-background p-3 text-xs leading-relaxed text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60"
+            spellCheck={false}
+            autoFocus={state === "editing"}
+          />
+        </div>
       )}
 
       {state === "done" && (
-        <p className="text-sm text-foreground">Done. Tasks extracted.</p>
+        <p className="text-sm text-foreground">Done. Tasks and briefings generated.</p>
       )}
 
-      <Button
-        onClick={handleSubmit}
-        disabled={!file || isLoading}
-        className="w-full"
-      >
-        {isLoading && <Loader2 data-icon="inline-start" className="animate-spin" />}
-        {isLoading ? (state === "uploading" ? "Uploading…" : "Processing…") : "Process Meeting"}
-      </Button>
+      {state === "editing" && (
+        <Button onClick={handleSubmitMinutes} disabled={!minutes.trim()} className="w-full">
+          Submit Minutes — Extract Tasks &amp; Briefings
+        </Button>
+      )}
+
+      {!showEditor && (
+        <Button
+          onClick={handleProcess}
+          disabled={!file || isLoading || fileKind === "unsupported"}
+          className="w-full"
+        >
+          {isLoading && <Loader2 data-icon="inline-start" className="animate-spin" />}
+          {isLoading ? progressLabel : buttonLabel}
+        </Button>
+      )}
     </div>
   )
 }
