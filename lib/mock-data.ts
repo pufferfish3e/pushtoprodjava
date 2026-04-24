@@ -7,6 +7,7 @@ export const MOCK_EVENTS: Event[] = [
     event_date: "2026-05-10",
     org_id: "demo-org",
     status: "active",
+    created_at: "2026-04-01T00:00:00Z",
   },
   {
     id: "evt-002",
@@ -14,6 +15,7 @@ export const MOCK_EVENTS: Event[] = [
     event_date: "2026-05-17",
     org_id: "demo-org",
     status: "active",
+    created_at: "2026-04-01T00:00:00Z",
   },
   {
     id: "evt-003",
@@ -21,6 +23,7 @@ export const MOCK_EVENTS: Event[] = [
     event_date: "2026-06-01",
     org_id: "demo-org",
     status: "active",
+    created_at: "2026-04-01T00:00:00Z",
   },
 ]
 

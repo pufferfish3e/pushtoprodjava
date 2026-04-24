@@ -20,9 +20,9 @@ function maxUrgencyFor(eventId: string) {
 }
 
 const STATUS_VARIANT: Record<Event["status"], "default" | "secondary" | "outline"> = {
+  planning: "outline",
   active: "default",
   completed: "secondary",
-  cancelled: "outline",
 }
 
 export default function DashboardPage() {

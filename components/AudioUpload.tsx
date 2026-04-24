@@ -8,12 +8,13 @@ import { Upload, FileAudio, X, Loader2 } from "lucide-react"
 import type { ProcessResponse } from "@/lib/types"
 
 interface AudioUploadProps {
+  eventId: string
   onResult: (result: ProcessResponse) => void
 }
 
 type UploadState = "idle" | "uploading" | "processing" | "done" | "error"
 
-export function AudioUpload({ onResult }: AudioUploadProps) {
+export function AudioUpload({ eventId, onResult }: AudioUploadProps) {
   const [state, setState] = useState<UploadState>("idle")
   const [file, setFile] = useState<File | null>(null)
   const [progress, setProgress] = useState(0)
@@ -54,7 +55,8 @@ export function AudioUpload({ onResult }: AudioUploadProps) {
 
     try {
       const formData = new FormData()
-      formData.append("file", file)
+      formData.append("audio", file)
+      formData.append("event_id", eventId)
       setProgress(40)
       setState("processing")
 
