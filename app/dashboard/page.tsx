@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RiskBanner } from "@/components/RiskBanner"
 import { CreateEventDialog } from "@/components/CreateEventDialog"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createAdminSupabaseClient } from "@/lib/supabase/server"
 import { deriveRisks } from "@/lib/derive-risks"
 import { MOCK_EVENTS, MOCK_TASKS, MOCK_RISKS } from "@/lib/mock-data"
 import type { Event, Task } from "@/lib/types"
@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   let fromDB = false
 
   try {
-    const supabase = createServerSupabaseClient()
+    const supabase = createAdminSupabaseClient()
     const [{ data: evts }, { data: tks }] = await Promise.all([
       supabase.from("events").select("*").order("event_date", { ascending: true }),
       supabase.from("tasks").select("*"),
