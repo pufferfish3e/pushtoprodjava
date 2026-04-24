@@ -153,17 +153,93 @@ Responsibilities:
 - review-safe output shape
 - save to Supabase
 
-### Lane B - Dashboard UI
+### Lane B - Dashboard UI (Dev 2)
 
-Own:
-- dashboard pages
-- event detail pages
-- reusable task and event UI
+**Read this first before touching any file.**
 
-Responsibilities:
-- strong empty/loading/error states
-- urgency-first table views
-- cross-event visibility
+#### What is already built (do not rebuild)
+
+All of the following files exist and are wired up. Pull the branch and verify before writing anything new.
+
+```
+lib/types.ts                              ← canonical types — read-only for Dev 2
+lib/utils.ts                              ← shadcn cn() utility
+lib/mock-data.ts                          ← 3 SPSU events, 8 tasks, 2 blockers, 3 risks
+components/ui/*                           ← shadcn/ui components (button, badge, card, table, tabs, skeleton, alert, separator, input, progress)
+components/AudioUpload.tsx                ← drag-drop file picker, POSTs to /api/process, loading state
+components/BriefingTabs.tsx               ← 4 role tabs (Secretary / OC / CC VCC / EXCO)
+components/TaskTable.tsx                  ← urgency-sorted, blocker badge, status colors
+components/RiskBanner.tsx                 ← high/medium severity alert banners
+components/MinutesPreview.tsx             ← monospace draft + copy button
+app/dashboard/layout.tsx                  ← sticky header with Clerk UserButton, auth guard
+app/dashboard/page.tsx                    ← event cards grid, cross-event risk signals (mock data)
+app/dashboard/events/[id]/page.tsx        ← task table + briefings + minutes preview (mock data)
+```
+
+#### Design system
+
+- shadcn/ui `base-nova` style, Tailwind v4
+- Pure dark theme (black background, white text, no color accents)
+- CSS variables in `app/globals.css` — do not add raw color values anywhere
+- Use semantic tokens only: `bg-background`, `text-muted-foreground`, `text-destructive`, etc.
+- Icons: `lucide-react` only
+
+#### What Dev 2 needs to build next (priority order)
+
+**1. Task review modal (must ship)**
+- After `AudioUpload` receives the `ProcessResponse` from `/api/process`, open a review step
+- Show extracted tasks in an editable list before saving
+- Allow inline edit: assignee, urgency, deadline
+- "Publish all" button saves to Supabase `tasks` table
+- File: `components/TaskReviewModal.tsx` (new)
+- Wire into: `app/dashboard/events/[id]/page.tsx` or a new `/dashboard/review` page
+
+**2. Live Supabase data binding (must ship)**
+- Replace `MOCK_EVENTS` / `MOCK_TASKS` / `MOCK_RISKS` imports with real Supabase reads
+- Use `lib/supabase/server.ts` in server components (already configured)
+- Query: `supabase.from('events').select('*')` and `supabase.from('tasks').select('*')`
+- Keep mock data as fallback only if DB is not yet ready
+- Risk signals (`MOCK_RISKS`) can be derived client-side from task data until Dev 1 ships them from the API
+
+**3. Task status update (must ship)**
+- Add a status dropdown or click-to-cycle on `TaskTable` rows
+- Call `supabase.from('tasks').update({ status }).eq('id', id)` on change
+- Optimistic UI update — do not wait for full page reload
+- File: extend `components/TaskTable.tsx`
+
+**4. Query input panel (after Dev 3 ships `/api/query`)**
+- Simple textarea + submit button on the dashboard or event detail page
+- POST to `/api/query`, render plain-English response below
+- File: `components/QueryPanel.tsx` (new)
+
+#### Handoff contract from Dev 1
+
+Dev 1 owns `app/api/process/route.ts`. It returns exactly this shape:
+
+```typescript
+// Already in lib/types.ts
+interface ProcessResponse {
+  meeting_id: string
+  transcript: string
+  tasks: Task[]
+  briefings: Briefings
+  risks: RiskSignal[]
+  minutes_draft: string
+}
+```
+
+`AudioUpload.tsx` already calls `POST /api/process` and passes the result to `onResult(data: ProcessResponse)`. Wire that callback into the review modal.
+
+#### Merge notes
+
+When you pull this branch you will need to merge `lib/types.ts`. Dev 1 may have a `Meeting` interface — add it to the file without removing anything. All other files are non-conflicting new files.
+
+#### What Dev 2 must not touch
+
+- `app/api/process/*` — Dev 1 owns this
+- `app/api/query/*` — Dev 3 owns this
+- `lib/groq.ts` — Dev 1 owns this
+- `lib/supabase/*` — shared, read-only for Dev 2
 
 ### Lane C - Query interface
 

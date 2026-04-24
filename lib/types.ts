@@ -23,6 +23,34 @@ export interface Task {
   notes: string
 }
 
+export interface Briefings {
+  secretary: string
+  oc: string
+  cc_vcc: string
+  exco: string
+}
+
+export interface RiskSignal {
+  type: 'overloaded_person' | 'unowned_blocker' | 'deadline_risk' | 'unresolved_task'
+  description: string
+  severity: 'high' | 'medium'
+}
+
+export interface ProcessResponse {
+  meeting_id: string
+  transcript: string
+  tasks: Task[]
+  briefings: Briefings
+  risks: RiskSignal[]
+  minutes_draft: string
+}
+
+export interface Event {
+  id: string
+  name: string
+  event_date: string
+  org_id: string
+  status: 'active' | 'completed' | 'cancelled'
 export interface Meeting {
   id: string
   event_id: string

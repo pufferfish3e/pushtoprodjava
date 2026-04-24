@@ -1,85 +1,105 @@
-import { UserButton } from "@clerk/nextjs";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import Link from "next/link"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RiskBanner } from "@/components/RiskBanner"
+import { MOCK_EVENTS, MOCK_TASKS, MOCK_RISKS } from "@/lib/mock-data"
+import type { Event } from "@/lib/types"
+import { CalendarDays, Users, AlertTriangle } from "lucide-react"
 
-export default async function DashboardPage() {
-  const { userId } = await auth();
+function taskCountFor(eventId: string) {
+  return MOCK_TASKS.filter((t) => t.event_id === eventId).length
+}
 
-  if (!userId) {
-    redirect("/sign-in");
-  }
+function blockerCountFor(eventId: string) {
+  return MOCK_TASKS.filter((t) => t.event_id === eventId && t.is_blocker).length
+}
 
-  const user = await currentUser();
+function maxUrgencyFor(eventId: string) {
+  const tasks = MOCK_TASKS.filter((t) => t.event_id === eventId)
+  return tasks.length ? Math.max(...tasks.map((t) => t.urgency)) : 0
+}
 
-  if (!isSupabaseConfigured()) {
-    return (
-      <main className="flex min-h-screen items-center justify-center px-6 py-10">
-        <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-slate-950/70 p-8 text-slate-200 shadow-2xl shadow-slate-950/30">
-          <h1 className="text-3xl font-semibold text-white">Setup needed</h1>
-          <p className="mt-4 text-sm leading-6 text-slate-300">
-            Add your Supabase URL and publishable key to <code>.env.local</code>{" "}
-            before using Supabase from this dashboard.
-          </p>
-          <Link
-            className="mt-6 inline-flex rounded-full bg-sky-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-300"
-            href="/"
-          >
-            Return home
-          </Link>
-        </div>
-      </main>
-    );
-  }
+const STATUS_VARIANT: Record<Event["status"], "default" | "secondary" | "outline"> = {
+  active: "default",
+  completed: "secondary",
+  cancelled: "outline",
+}
 
-  const email = user?.primaryEmailAddress?.emailAddress ?? "No primary email";
+export default function DashboardPage() {
+  const events = MOCK_EVENTS
+  const risks = MOCK_RISKS
 
   return (
-    <main className="min-h-screen px-6 py-10">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/70 p-8 shadow-2xl shadow-slate-950/30">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-sky-300">
-              Protected
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold text-white">
-              Dashboard
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              This page is server-rendered and protected by Clerk. Any Supabase
-              queries you run here can use the same Clerk session token for RLS.
-            </p>
-          </div>
-          <div className="rounded-full border border-white/10 bg-white/5 p-2">
-            <UserButton />
-          </div>
-        </div>
+    <div className="flex flex-col gap-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Events</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Cross-event overview — active coordination across {events.filter((e) => e.status === "active").length} events
+        </p>
+      </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-6">
-            <p className="text-sm font-medium text-slate-400">Signed in as</p>
-            <p className="mt-2 text-xl font-semibold text-white">
-              {email ?? "Unknown email"}
-            </p>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-slate-950/60 p-6">
-            <p className="text-sm font-medium text-slate-400">Clerk user ID</p>
-            <p className="mt-2 break-all text-sm text-slate-200">
-              {userId}
-            </p>
-          </div>
+      {risks.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Risk Signals
+          </h2>
+          <RiskBanner risks={risks} />
         </div>
+      )}
 
-        <div className="rounded-3xl border border-dashed border-white/15 bg-white/5 p-6">
-          <h2 className="text-lg font-semibold text-white">Where to build next</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
-            Use <code>lib/supabase/server.ts</code> in server code and{" "}
-            <code>lib/supabase/client.ts</code> in client code to send Clerk
-            tokens to Supabase. Then add your own tables and RLS policies.
-          </p>
+      <div>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          Active Events
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {events.map((event) => {
+            const taskCount = taskCountFor(event.id)
+            const blockerCount = blockerCountFor(event.id)
+            const maxUrgency = maxUrgencyFor(event.id)
+
+            return (
+              <Link key={event.id} href={`/dashboard/events/${event.id}`}>
+                <Card className="group transition-colors hover:bg-accent/50 cursor-pointer h-full">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-sm font-semibold leading-snug group-hover:text-foreground">
+                        {event.name}
+                      </CardTitle>
+                      <Badge variant={STATUS_VARIANT[event.status]} className="shrink-0 text-xs">
+                        {event.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className="size-3.5" />
+                        <span>{event.event_date}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Users className="size-3.5" />
+                        <span>{taskCount} task{taskCount !== 1 ? "s" : ""}</span>
+                      </div>
+                      {blockerCount > 0 && (
+                        <div className="flex items-center gap-1.5 text-destructive">
+                          <AlertTriangle className="size-3.5" />
+                          <span>{blockerCount} blocker{blockerCount !== 1 ? "s" : ""}</span>
+                        </div>
+                      )}
+                      {maxUrgency === 5 && (
+                        <div className="flex items-center gap-1.5 text-destructive font-medium">
+                          <span className="size-1.5 rounded-full bg-destructive inline-block" />
+                          Critical task present
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )
+          })}
         </div>
       </div>
-    </main>
-  );
+    </div>
+  )
 }
