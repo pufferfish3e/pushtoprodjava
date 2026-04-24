@@ -48,7 +48,6 @@ export function EventDetailClient({
   }
 
   const handleStatusChange = useCallback(async (taskId: string, status: TaskStatus) => {
-    // optimistic
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status } : t))
     try {
       const token = await getToken()
@@ -59,7 +58,6 @@ export function EventDetailClient({
         .eq("id", taskId)
       if (error) {
         console.error("[tasks] status update failed", error.message)
-        // revert on error
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: t.status } : t))
       }
     } catch (e) {
@@ -69,29 +67,8 @@ export function EventDetailClient({
 
   return (
     <div className="flex flex-col gap-8">
-      {risks.length > 0 && (
-        <section>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Risk Signals
-          </p>
-          <RiskBanner risks={risks} />
-        </section>
-      )}
 
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Tasks ({tasks.length})
-          </p>
-          {justProcessed && (
-            <Badge variant="secondary" className="text-xs">live — just processed</Badge>
-          )}
-        </div>
-        <TaskTable tasks={tasks} onStatusChange={handleStatusChange} />
-      </section>
-
-      <Separator />
-
+      {/* 1. Recording — top */}
       <section>
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           New Meeting Recording
@@ -112,6 +89,7 @@ export function EventDetailClient({
 
       <Separator />
 
+      {/* 2. Role Briefings */}
       <section>
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Role Briefings
@@ -119,12 +97,39 @@ export function EventDetailClient({
         <BriefingTabs briefings={briefings} />
       </section>
 
+      {/* 3. Minutes Preview */}
       <section>
         <MinutesPreview minutes={minutes} />
       </section>
 
       <Separator />
 
+      {/* 4. High Priority */}
+      {risks.length > 0 && (
+        <section>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            High Priority
+          </p>
+          <RiskBanner risks={risks} />
+        </section>
+      )}
+
+      {/* 5. Tasks */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Tasks ({tasks.length})
+          </p>
+          {justProcessed && (
+            <Badge variant="secondary" className="text-xs">live — just processed</Badge>
+          )}
+        </div>
+        <TaskTable tasks={tasks} onStatusChange={handleStatusChange} />
+      </section>
+
+      <Separator />
+
+      {/* 6. Query */}
       <section>
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
           Ask About {eventName}

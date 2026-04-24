@@ -74,7 +74,7 @@ export default async function DashboardPage() {
       {risks.length > 0 && (
         <section>
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Risk Signals
+            High Priority
           </p>
           <RiskBanner risks={risks} />
         </section>

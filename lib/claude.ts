@@ -110,6 +110,70 @@ Respond with valid JSON only. No markdown, no explanation.`,
   return RoutingSchema.parse(parseJSON(raw))
 }
 
+// --- SPSU Minutes Agent ---
+// transcript → SPSU-formatted official meeting minutes (2nd meeting template)
+export async function formatAsSPSUMinutes(transcript: string, eventName: string): Promise<string> {
+  const today = new Date().toLocaleDateString('en-SG', { day: '2-digit', month: 'long', year: 'numeric' })
+
+  const msg = await getClient().messages.create({
+    model: MODEL,
+    max_tokens: 2048,
+    system: `You are a secretary for SPSU (Singapore Polytechnic Students' Union).
+Format the meeting transcript into SPSU official meeting minutes using this exact structure:
+
+SPSU 67th COUNCIL [EVENT NAME] 26/27
+MEETING DISCUSSION MEETING
+[Date] | [Location] | [Time] HOURS
+
+IN ATTENDANCE
+Name | Designation | Present / Absent with Apologies
+[list attendees from transcript]
+
+[CC/VCC name], Chairperson of [Event], called the meeting to order at [time].
+
+AGENDA 1: APOLOGIES
+[Any apologies mentioned, or "No apologies received."]
+
+AGENDA 2: UPDATES BY COMMITTEE
+[Key updates each member gave, bullet points per person]
+
+AGENDA 3: DISCUSSION ON EVENT
+[Main discussion points, decisions made]
+
+AGENDA 4: TASK DELEGATION
+Committee Member | Task | Deadline
+[rows from transcript]
+
+AGENDA 5: A.O.B.
+[Any other business, or "No other business raised."]
+
+AGENDA 6: FIXTURE OF NEXT MEETING
+[Next meeting date/time/venue if mentioned, otherwise "To be confirmed."]
+
+The discussion was proposed to be closed by [name] and seconded by [name].
+
+[CC/VCC name], Chairperson, officially closed the discussion at [time].
+
+Recorded by: ________________________________
+[Secretary name]
+Secretary, SPSU 67th Council
+
+Chaired by: ________________________________
+[CC/VCC name]
+Chairperson/Vice-Chairperson, [Event name]
+
+Use formal English. Infer values from transcript context. Mark unclear items with [TBC].
+Respond with the formatted minutes only — no explanation, no preamble.`,
+    messages: [{
+      role: 'user',
+      content: `Event: ${eventName}\nDate: ${today}\n\nTranscript:\n${transcript}\n\nFormat as SPSU meeting minutes.`,
+    }],
+  })
+
+  const block = msg.content[0]
+  return block.type === 'text' ? block.text : ''
+}
+
 // --- Query Agent ---
 // NL question + task rows → plain-English answer
 export async function answerQuery(question: string, tasks: Task[]): Promise<string> {
