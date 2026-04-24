@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { answerQuery } from '@/lib/claude'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import type { QueryResponse } from '@/lib/types'
 
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { question, event_id } = parsed.data
-  const supabase = createServerSupabaseClient()
+  const supabase = createAdminSupabaseClient()
 
   let query = supabase.from('tasks').select('*')
   if (event_id) query = query.eq('event_id', event_id)

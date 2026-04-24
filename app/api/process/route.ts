@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { transcribeAudio } from '@/lib/groq'
 import { extractMeetingState, generateOutputs } from '@/lib/claude'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminSupabaseClient } from '@/lib/supabase/server'
 import type { ProcessResponse } from '@/lib/types'
 
 export async function POST(req: NextRequest) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const supabase = createServerSupabaseClient()
+    const supabase = createAdminSupabaseClient()
 
     const { data: event } = await supabase
       .from('events')
