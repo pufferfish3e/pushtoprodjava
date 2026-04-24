@@ -1,10 +1,10 @@
 import type { Event, Task, Briefings, RiskSignal } from "./types"
 
-// IDs match data/demo/seed.sql — update here if seed changes
+// IDs match supabase/migrations/initialsetup.sql seed
 export const EVT = {
-  orientation: "00000000-0000-0000-0000-000000000001",
-  socialnight:  "00000000-0000-0000-0000-000000000002",
-  summit:       "00000000-0000-0000-0000-000000000003",
+  orientation: "a1b2c3d4-0001-0001-0001-000000000001",
+  socialnight:  "a1b2c3d4-0002-0002-0002-000000000002",
+  summit:       "a1b2c3d4-0003-0003-0003-000000000003",
 } as const
 
 export const MOCK_EVENTS: Event[] = [

@@ -30,9 +30,14 @@ const TaskSchema = z.object({
   notes: z.string(),
 })
 
+const DecisionSchema = z.preprocess(
+  d => typeof d === 'string' ? d : JSON.stringify(d),
+  z.string()
+)
+
 const ExtractionSchema = z.object({
   tasks: z.array(TaskSchema),
-  decisions: z.array(z.string()),
+  decisions: z.array(DecisionSchema),
 })
 
 const RoutingSchema = z.object({
@@ -63,7 +68,7 @@ Set is_blocker=true if the task blocks the event or another task from proceeding
 Respond with valid JSON only. No markdown, no explanation outside the JSON.`,
     messages: [{
       role: 'user',
-      content: `Transcript:\n\n${transcript}\n\nReturn JSON:\n{"tasks":[{"assignee":"","task":"","deadline":"YYYY-MM-DD or null","urgency":3,"status":"pending","is_blocker":false,"notes":""}],"decisions":[]}`,
+      content: `Transcript:\n\n${transcript}\n\nReturn JSON:\n{"tasks":[{"assignee":"","task":"","deadline":"YYYY-MM-DD or null","urgency":3,"status":"pending","is_blocker":false,"notes":""}],"decisions":["plain string sentence per decision"]}`,
     }],
   })
 
