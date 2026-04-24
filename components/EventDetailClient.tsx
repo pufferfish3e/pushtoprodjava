@@ -4,6 +4,7 @@ import { useState, useCallback } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { createBrowserSupabaseClient } from "@/lib/supabase/client"
 import { AudioUpload } from "@/components/AudioUpload"
+import { LiveRecorder } from "@/components/LiveRecorder"
 import { TaskTable } from "@/components/TaskTable"
 import { BriefingTabs } from "@/components/BriefingTabs"
 import { RiskBanner } from "@/components/RiskBanner"
@@ -11,6 +12,7 @@ import { MinutesPreview } from "@/components/MinutesPreview"
 import { QueryPanel } from "@/components/QueryPanel"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Task, Briefings, RiskSignal, ProcessResponse, TaskStatus } from "@/lib/types"
 
 interface Props {
@@ -92,9 +94,20 @@ export function EventDetailClient({
 
       <section>
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Upload New Meeting Recording
+          New Meeting Recording
         </p>
-        <AudioUpload eventId={eventId} onResult={handleResult} />
+        <Tabs defaultValue="record">
+          <TabsList className="mb-4">
+            <TabsTrigger value="record">Live Record</TabsTrigger>
+            <TabsTrigger value="upload">Upload File</TabsTrigger>
+          </TabsList>
+          <TabsContent value="record">
+            <LiveRecorder eventId={eventId} onResult={handleResult} />
+          </TabsContent>
+          <TabsContent value="upload">
+            <AudioUpload eventId={eventId} onResult={handleResult} />
+          </TabsContent>
+        </Tabs>
       </section>
 
       <Separator />
