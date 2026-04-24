@@ -13,9 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import type { Task, TaskUrgency, TaskStatus } from "@/lib/types"
 
+const STATUSES: TaskStatus[] = ["pending", "in_progress", "completed", "blocked"]
+
 interface TaskTableProps {
   tasks: Task[]
   loading?: boolean
+  onStatusChange?: (taskId: string, status: TaskStatus) => void
 }
 
 function urgencyLabel(u: TaskUrgency) {
@@ -47,8 +50,11 @@ const URGENCY_DOTS: Record<TaskUrgency, string> = {
   5: "bg-destructive",
 }
 
-export function TaskTable({ tasks, loading }: TaskTableProps) {
-  const sorted = [...tasks].sort((a, b) => b.urgency - a.urgency)
+export function TaskTable({ tasks, loading, onStatusChange }: TaskTableProps) {
+  const sorted = [...tasks].sort((a, b) => {
+    if (a.is_blocker !== b.is_blocker) return a.is_blocker ? -1 : 1
+    return b.urgency - a.urgency
+  })
 
   if (loading) {
     return (
@@ -61,9 +67,7 @@ export function TaskTable({ tasks, loading }: TaskTableProps) {
   }
 
   if (!sorted.length) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">No tasks found.</p>
-    )
+    return <p className="py-8 text-center text-sm text-muted-foreground">No tasks yet.</p>
   }
 
   return (
@@ -71,7 +75,7 @@ export function TaskTable({ tasks, loading }: TaskTableProps) {
       <Table>
         <TableHeader>
           <TableRow className="border-border hover:bg-transparent">
-            <TableHead className="w-8"></TableHead>
+            <TableHead className="w-8" />
             <TableHead>Task</TableHead>
             <TableHead>Assignee</TableHead>
             <TableHead>Urgency</TableHead>
@@ -80,13 +84,10 @@ export function TaskTable({ tasks, loading }: TaskTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sorted.map((task) => (
+          {sorted.map(task => (
             <TableRow
               key={task.id}
-              className={cn(
-                "border-border",
-                task.is_blocker && "bg-destructive/5"
-              )}
+              className={cn("border-border", task.is_blocker && "bg-destructive/5")}
             >
               <TableCell>
                 <span
@@ -114,9 +115,21 @@ export function TaskTable({ tasks, loading }: TaskTableProps) {
                 </span>
               </TableCell>
               <TableCell>
-                <Badge variant={STATUS_VARIANT[task.status]}>
-                  {statusLabel(task.status)}
-                </Badge>
+                {onStatusChange ? (
+                  <select
+                    value={task.status}
+                    onChange={e => onStatusChange(task.id, e.target.value as TaskStatus)}
+                    className="rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    {STATUSES.map(s => (
+                      <option key={s} value={s}>{statusLabel(s)}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <Badge variant={STATUS_VARIANT[task.status]}>
+                    {statusLabel(task.status)}
+                  </Badge>
+                )}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
                 {task.deadline ?? "—"}

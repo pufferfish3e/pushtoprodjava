@@ -1,180 +1,159 @@
-# Next.js + Clerk + Supabase Hackathon Boilerplate
+# Orin
 
-Simple starter for a hackathon:
+> **One meeting → four role-specific briefings + a ready-to-edit minutes draft.**
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- Clerk for auth
-- Supabase for database, storage, and RLS
-- Protected dashboard route
+AI-powered attention routing and documentation support for student-run organizations. Built for SPSU (Singapore Polytechnic Students' Union).
 
-Clerk owns authentication. Supabase trusts Clerk session tokens through the native third-party auth integration.
+---
 
-## 1. Install and run
+## The Problem
+
+SPSU runs many overlapping events with volunteer committees. Every meeting produces one shared stream of notes — but a CC/VCC needs blockers, the OC needs next actions, the Secretary needs documentation gaps, and EXCO needs cross-event risk. Nobody needs the same slice.
+
+Right now that all gets flattened into one document nobody reads between meetings.
+
+**Result:** CCs only notice issues after it's already late. Secretaries spend hours reconstructing meetings into formal minutes by hand.
+
+---
+
+## What This Does
+
+Upload a meeting recording. Six specialized agents process it:
+
+```
+audio  ──► [Transcription]   Groq Whisper → transcript
+           [Meeting Agent]   Claude → tasks, owners, deadlines, blockers
+           [Routing Agent]   Claude → 4 role-specific briefings    ← the differentiator
+           [Document Agent]  Claude → minutes draft ready to finalize
+           [Risk Agent]      Claude → overloaded people, unowned blockers, deadline risks
+question ► [Query Agent]     Claude → plain-English answer over live task data
+```
+
+**Each role gets a different output from the same meeting:**
+
+| Role | Gets |
+|---|---|
+| Secretary | Documentation gaps, ambiguous owners, generated minutes draft |
+| OC | What changed, next actions this week, what is blocked |
+| CC / VCC | Blockers, highest-urgency tasks, where intervention is needed |
+| EXCO | Cross-event risk, overloaded people, escalation signals |
+
+---
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| Frontend | Next.js 16 App Router, React 19, Tailwind v4, shadcn/ui |
+| Auth | Clerk |
+| Database | Supabase Postgres + RLS |
+| Transcription | Groq Whisper large-v3-turbo |
+| AI agents | Claude Sonnet 4.6 (Anthropic) |
+| Hosting | Vercel |
+
+---
+
+## Setup
+
+### 1. Install
 
 ```bash
 npm install
+```
+
+### 2. Environment variables
+
+Copy `.env.example` → `.env.local` and fill in:
+
+```bash
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_...
+ANTHROPIC_API_KEY=sk-ant-...
+GROQ_API_KEY=gsk_...
+```
+
+Keys from:
+- [Clerk Dashboard](https://dashboard.clerk.com) → API Keys
+- [Supabase Dashboard](https://supabase.com/dashboard) → Project Settings → Data API
+- [Anthropic Console](https://console.anthropic.com)
+- [Groq Console](https://console.groq.com)
+
+### 3. Database
+
+Paste `supabase/migrations/initialsetup.sql` into Supabase SQL editor. Creates `events`, `meetings`, `tasks` tables with RLS and seeds 3 demo events.
+
+Connect Clerk → Supabase: Clerk Dashboard → Integrations → Supabase → activate → copy domain → Supabase → Authentication → Add provider → Clerk → paste domain.
+
+### 4. Run
+
+```bash
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+`http://localhost:3000` → sign in → dashboard.
 
-## 2. Create your Clerk app
+---
 
-1. Go to `https://dashboard.clerk.com/`
-2. Create a new application.
-3. Choose the sign-in methods you want for the hackathon.
-4. Open `API Keys`.
-5. Copy:
-   - Publishable key
-   - Secret key
+## Routes
 
-## 3. Create your Supabase project
+| Route | What |
+|---|---|
+| `/dashboard` | Cross-event overview — active events, risk signals |
+| `/dashboard/events/[id]` | Event detail — tasks, upload, briefings, minutes, query |
+| `/test` | Dev tool — test all API endpoints |
+| `/api/process` | `POST` audio + event_id → full `ProcessResponse` |
+| `/api/query` | `POST` question + event_id? → plain-English answer |
 
-1. Go to `https://supabase.com/dashboard`
-2. Create a new project.
-3. Choose your organization.
-4. Pick a project name.
-5. Set a database password and save it somewhere safe.
-6. Pick the region closest to your users.
-7. Wait for the project to finish provisioning.
+---
 
-## 4. Connect Clerk to Supabase
+## Demo Data
 
-### In Clerk
+Three seeded SPSU events in `data/demo/`:
 
-1. In the Clerk Dashboard, open the Supabase integration setup page.
-2. Activate the Supabase integration.
-3. Copy the Clerk domain shown there.
+| File | Signals |
+|---|---|
+| `notes-orientation-camp.txt` | Campsite blocker, transport dependency chain |
+| `notes-freshmen-social.txt` | Venue blocker, cross-event overload |
+| `notes-leadership-summit.txt` | Facilitator at-risk, EXCO oversight angle |
 
-### In Supabase
+Sample NL queries in `data/demo/queries.txt`.
 
-1. Open your Supabase project.
-2. Go to `Authentication -> Sign In / Up`.
-3. Select `Add provider`.
-4. Choose `Clerk`.
-5. Paste the Clerk domain from Clerk.
-6. Save the provider.
+---
 
-This is the key step that allows Supabase to trust Clerk session tokens directly. This is the current recommended integration path from Supabase and Clerk.
+## Project Structure
 
-## 5. Add your local environment variables
+```
+app/
+  dashboard/              Cross-event overview (server, live Supabase reads)
+  dashboard/events/[id]/  Event detail (server fetch → client wrapper)
+  api/process/            Full pipeline: audio → Groq → Claude → Supabase
+  api/query/              NL query over task data
+  test/                   Dev endpoint tester
 
-Create `.env.local` from `.env.example` and fill in:
+components/
+  EventDetailClient.tsx   Upload wire-up, live state, inline status updates
+  AudioUpload.tsx         Drag-drop audio input
+  TaskTable.tsx           Urgency+blocker sorted, inline status change
+  BriefingTabs.tsx        4 role tabs (Secretary / OC / CC-VCC / EXCO)
+  RiskBanner.tsx          High/medium risk signal alerts
+  MinutesPreview.tsx      Secretary doc draft + copy
+  QueryPanel.tsx          NL query input + response
 
-```bash
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
-CLERK_SECRET_KEY=...
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+lib/
+  claude.ts               All 5 Claude agents (Zod-validated output)
+  groq.ts                 Whisper transcription
+  types.ts                Shared TypeScript interfaces
+  derive-risks.ts         Risk signal derivation from task data
+  mock-data.ts            Demo fixtures (aligned with seeded UUIDs)
+
+supabase/migrations/      Schema + seed SQL
+data/demo/                Sample meeting notes + queries
 ```
 
-Where to find the Supabase values:
+---
 
-1. Open `Project Settings -> Data API` in Supabase.
-2. Copy:
-   - Project URL
-   - Publishable key
+## The One Line
 
-The publishable key is the client-safe key formerly often called the anon/public key.
-
-## 6. What you do not need anymore in Supabase
-
-Because Clerk handles auth for this starter, you do **not** need to configure:
-
-- Supabase magic-link auth
-- Supabase email templates
-- Supabase auth redirect URLs for sign-in emails
-- the old Clerk JWT template integration
-
-## 7. How Supabase auth works in this starter
-
-This repo sends Clerk session tokens to Supabase instead of using Supabase Auth sessions:
-
-- client-side helper: `lib/supabase/client.ts`
-- server-side helper: `lib/supabase/server.ts`
-- protected route middleware: `proxy.ts`
-
-Supabase then evaluates RLS policies against the Clerk token claims via `auth.jwt()`.
-
-## 8. Minimum RLS example for your first table
-
-If you want to test the integration end-to-end, create a simple table in `Supabase -> SQL Editor`:
-
-```sql
-create table tasks (
-  id bigserial primary key,
-  name text not null,
-  user_id text not null default auth.jwt()->>'sub'
-);
-
-alter table public.tasks enable row level security;
-
-create policy "Users can view their own tasks"
-on public.tasks
-for select
-to authenticated
-using ((select auth.jwt()->>'sub') = user_id);
-
-create policy "Users can insert their own tasks"
-on public.tasks
-for insert
-to authenticated
-with check ((select auth.jwt()->>'sub') = user_id);
-```
-
-What this does:
-
-- `auth.jwt()->>'sub'` reads the Clerk user ID from the token
-- `user_id` defaults to that Clerk user ID
-- each signed-in user can only read and insert their own rows
-
-## 9. How to query Supabase in your app
-
-### In server code
-
-Use `createServerSupabaseClient()` from `lib/supabase/server.ts`.
-
-### In client code
-
-Use `createBrowserSupabaseClient()` from `lib/supabase/client.ts` and pass Clerk's `session.getToken()` as the access token provider.
-
-Example shape:
-
-```ts
-const client = createBrowserSupabaseClient(() => session?.getToken() ?? Promise.resolve(null))
-```
-
-## 10. First local smoke test
-
-1. Run `npm run dev`
-2. Open `http://localhost:3000`
-3. Sign up or sign in with Clerk
-4. Open `/dashboard`
-5. Confirm you can access the protected page
-6. If you added the sample `tasks` table and queries, confirm each user only sees their own rows
-
-## 11. Deploy notes
-
-After deployment:
-
-1. Add your production Clerk keys in your hosting provider
-2. Add your production Supabase URL and publishable key in your hosting provider
-3. In Clerk, add your production domain to the allowed application URLs if needed
-4. Keep the Clerk <-> Supabase provider connection on the same production Clerk instance
-
-## 12. Included routes
-
-- `/` public home page
-- `/sign-in` Clerk sign-in page
-- `/sign-up` Clerk sign-up page
-- `/login` redirect alias to `/sign-in`
-- `/dashboard` protected page
-
-## 13. Important notes
-
-- This starter does not create any tables automatically.
-- This starter does not sync Clerk users into your database automatically.
-- If you want user rows inside Postgres, add them yourself with webhooks or server code.
-- For hackathons, this is usually enough: Clerk for auth, Supabase for data, and RLS with Clerk claims.
+> Most AI meeting tools create one summary for everyone. We turn one meeting into role-specific operational briefings and a usable minutes draft — so each person sees only what they need to act on.
