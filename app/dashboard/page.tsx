@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RiskBanner } from "@/components/RiskBanner"
+import { CreateEventDialog } from "@/components/CreateEventDialog"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { deriveRisks } from "@/lib/derive-risks"
 import { MOCK_EVENTS, MOCK_TASKS, MOCK_RISKS } from "@/lib/mock-data"
@@ -60,11 +61,14 @@ export default async function DashboardPage() {
             {active.length} active · cross-event coordination overview
           </p>
         </div>
-        {!fromDB && (
-          <span className="text-xs text-muted-foreground border border-border rounded px-2 py-1">
-            mock data
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {!fromDB && (
+            <span className="text-xs text-muted-foreground border border-border rounded px-2 py-1">
+              mock data
+            </span>
+          )}
+          <CreateEventDialog />
+        </div>
       </div>
 
       {risks.length > 0 && (
