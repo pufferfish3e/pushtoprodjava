@@ -171,14 +171,14 @@ export function AudioUpload({ eventId, onResult }: AudioUploadProps) {
   const showEditor = state === "editing" || state === "processing" || state === "done"
 
   const progressLabel =
-    state === "uploading" ? "Uploading…" :
-    state === "extracting" ? (fileKind === "audio" ? "Transcribing audio…" : "Extracting document text…") :
-    state === "formatting" ? "Formatting meeting minutes…" :
-    state === "processing" ? "Extracting tasks and generating briefings…" :
+    state === "uploading" ? "Uploading your file…" :
+    state === "extracting" ? (fileKind === "audio" ? "Reading your recording…" : "Reading your document…") :
+    state === "formatting" ? "Preparing meeting notes…" :
+    state === "processing" ? "Generating briefings and tasks…" :
     ""
 
   const FileIcon = fileKind === "document" ? FileText : FileAudio
-  const buttonLabel = fileKind === "document" ? "Extract Content" : "Transcribe Recording"
+  const buttonLabel = fileKind === "document" ? "Process Document" : "Process Recording"
 
   return (
     <div className="flex flex-col gap-4">
@@ -226,7 +226,7 @@ export function AudioUpload({ eventId, onResult }: AudioUploadProps) {
               <Upload className="size-8 text-muted-foreground" />
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground">Drop file or click to browse</p>
-                <p className="text-xs text-muted-foreground">Audio: MP3, WAV, M4A, OGG · Documents: PDF, TXT</p>
+                <p className="text-xs text-muted-foreground">Supports meeting recordings (MP3, WAV, M4A) and written minutes (PDF, TXT)</p>
               </div>
             </>
           )}
@@ -245,8 +245,8 @@ export function AudioUpload({ eventId, onResult }: AudioUploadProps) {
       {showEditor && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Meeting Minutes
+            <p className="text-xs font-medium text-muted-foreground">
+              Your Meeting Notes
             </p>
             {state !== "done" && (
               <button
@@ -269,12 +269,12 @@ export function AudioUpload({ eventId, onResult }: AudioUploadProps) {
       )}
 
       {state === "done" && (
-        <p className="text-sm text-foreground">Done. Tasks and briefings generated.</p>
+        <p className="text-sm text-foreground">Done — your briefings and tasks are ready above.</p>
       )}
 
       {state === "editing" && (
         <Button onClick={handleSubmitMinutes} disabled={!minutes.trim()} className="w-full">
-          Submit Minutes — Extract Tasks &amp; Briefings
+          Generate Briefings &amp; Tasks
         </Button>
       )}
 

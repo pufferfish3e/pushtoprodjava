@@ -73,7 +73,7 @@ export function EventDetailClient({
       {showPlaceholderBanner && (
         <div className="flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-2.5">
           <p className="text-xs text-amber-700 dark:text-amber-400">
-            AI-generated preview — process a recording or upload a file to replace with real data.
+            This is a preview — upload your meeting recording below to replace it with real results.
           </p>
           <button
             onClick={() => setShowPlaceholderBanner(false)}
@@ -84,14 +84,60 @@ export function EventDetailClient({
         </div>
       )}
 
-      {/* 1. Recording — top */}
+      {/* 1. Attention Needed */}
+      {risks.length > 0 && (
+        <section>
+          <p className="mb-3 text-xs font-medium text-muted-foreground">
+            Attention Needed
+          </p>
+          <RiskBanner risks={risks} />
+        </section>
+      )}
+
+      {/* 2. Meeting Briefings */}
       <section>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          New Meeting Recording
+        <p className="mb-3 text-xs font-medium text-muted-foreground">
+          Meeting Briefings
+        </p>
+        <BriefingTabs briefings={briefings} />
+      </section>
+
+      {/* 3. Action Items */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-medium text-muted-foreground">
+            Action Items ({tasks.length})
+          </p>
+          {justProcessed && (
+            <Badge variant="secondary" className="text-xs">just updated</Badge>
+          )}
+        </div>
+        <TaskTable tasks={tasks} onStatusChange={handleStatusChange} />
+      </section>
+
+      {/* 4. Meeting Record */}
+      <section>
+        <MinutesPreview minutes={minutes} onSave={setMinutes} />
+      </section>
+
+      {/* 5. Ask */}
+      <section>
+        <p className="mb-3 text-xs font-medium text-muted-foreground">
+          Ask About {eventName}
+        </p>
+        <QueryPanel eventId={eventId} />
+      </section>
+
+      <Separator />
+
+      {/* 6. Add a Meeting Recording — at the bottom */}
+      <section>
+        <p className="mb-3 text-xs font-medium text-muted-foreground">
+          Add a Meeting Recording
         </p>
         <Tabs defaultValue="record">
           <TabsList className="mb-4">
-            <TabsTrigger value="record">Live Record</TabsTrigger>
+            <TabsTrigger value="record">Record Live</TabsTrigger>
             <TabsTrigger value="upload">Upload File</TabsTrigger>
           </TabsList>
           <TabsContent value="record">
@@ -101,56 +147,6 @@ export function EventDetailClient({
             <AudioUpload eventId={eventId} onResult={handleResult} />
           </TabsContent>
         </Tabs>
-      </section>
-
-      <Separator />
-
-      {/* 2. Role Briefings */}
-      <section>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Role Briefings
-        </p>
-        <BriefingTabs briefings={briefings} />
-      </section>
-
-      {/* 3. Minutes Preview */}
-      <section>
-        <MinutesPreview minutes={minutes} onSave={setMinutes} />
-      </section>
-
-      <Separator />
-
-      {/* 4. High Priority */}
-      {risks.length > 0 && (
-        <section>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            High Priority
-          </p>
-          <RiskBanner risks={risks} />
-        </section>
-      )}
-
-      {/* 5. Tasks */}
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Tasks ({tasks.length})
-          </p>
-          {justProcessed && (
-            <Badge variant="secondary" className="text-xs">live — just processed</Badge>
-          )}
-        </div>
-        <TaskTable tasks={tasks} onStatusChange={handleStatusChange} />
-      </section>
-
-      <Separator />
-
-      {/* 6. Query */}
-      <section>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          Ask About {eventName}
-        </p>
-        <QueryPanel eventId={eventId} />
       </section>
     </div>
   )

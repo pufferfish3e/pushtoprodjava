@@ -287,9 +287,9 @@ export function LiveRecorder({ eventId, onResult }: LiveRecorderProps) {
   const showEditor = state === "editing" || state === "processing" || state === "done"
 
   const statusLabel =
-    state === "transcribing" ? "Transcribing audio with Whisper…" :
-    state === "formatting" ? "Formatting meeting minutes…" :
-    state === "processing" ? "Extracting tasks and generating briefings…" :
+    state === "transcribing" ? "Reading your recording…" :
+    state === "formatting" ? "Preparing meeting notes…" :
+    state === "processing" ? "Generating briefings and tasks…" :
     ""
 
   return (
@@ -322,8 +322,8 @@ export function LiveRecorder({ eventId, onResult }: LiveRecorderProps) {
                 <p className="text-sm font-medium text-foreground">Live recording</p>
                 <p className="text-xs text-muted-foreground">
                   {speechSupported
-                    ? "Live captions preview — Whisper transcribes on stop"
-                    : "Audio captured — Whisper transcribes on stop"}
+                    ? "You'll see a live preview while recording — we'll clean it up when you stop."
+                    : "Audio captured — we'll transcribe it when you stop."}
                 </p>
               </div>
             </>
@@ -334,7 +334,7 @@ export function LiveRecorder({ eventId, onResult }: LiveRecorderProps) {
       {/* Live captions while recording (preview only) */}
       {state === "recording" && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+          <p className="text-xs font-medium text-muted-foreground flex items-center gap-2">
             Live Captions
             <span className="inline-block size-1.5 rounded-full bg-destructive animate-pulse" />
           </p>
@@ -365,8 +365,8 @@ export function LiveRecorder({ eventId, onResult }: LiveRecorderProps) {
       {showEditor && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Meeting Minutes
+            <p className="text-xs font-medium text-muted-foreground">
+              Your Meeting Notes
             </p>
             {state !== "done" && (
               <button
@@ -389,13 +389,13 @@ export function LiveRecorder({ eventId, onResult }: LiveRecorderProps) {
 
       {state === "editing" && (
         <Button onClick={handleSubmitMinutes} className="w-full">
-          Submit Minutes — Extract Tasks &amp; Briefings
+          Generate Briefings &amp; Tasks
         </Button>
       )}
 
       {state === "done" && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-foreground">Done. Tasks and briefings generated.</p>
+          <p className="text-sm text-foreground">Done — your briefings and tasks are ready above.</p>
           <button onClick={reset} className="text-xs text-muted-foreground underline-offset-2 hover:underline">
             Record again
           </button>
@@ -405,7 +405,7 @@ export function LiveRecorder({ eventId, onResult }: LiveRecorderProps) {
       {(state === "idle" || state === "requesting") && (
         <Button onClick={startRecording} disabled={state === "requesting"} className="w-full">
           {state === "requesting" && <Loader2 data-icon="inline-start" className="animate-spin" />}
-          {state === "requesting" ? "Requesting mic…" : "Start Recording"}
+          {state === "requesting" ? "Requesting microphone access…" : "Start Recording"}
         </Button>
       )}
     </div>

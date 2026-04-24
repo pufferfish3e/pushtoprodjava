@@ -10,6 +10,13 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import type { Task, TaskUrgency, TaskStatus } from "@/lib/types"
 
@@ -67,7 +74,7 @@ export function TaskTable({ tasks, loading, onStatusChange }: TaskTableProps) {
   }
 
   if (!sorted.length) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">No tasks yet.</p>
+    return <p className="py-8 text-center text-sm text-muted-foreground">No action items yet — process a recording to generate tasks.</p>
   }
 
   return (
@@ -92,7 +99,7 @@ export function TaskTable({ tasks, loading, onStatusChange }: TaskTableProps) {
               <TableCell>
                 <span
                   className={cn("block size-2 rounded-full", URGENCY_DOTS[task.urgency])}
-                  title={`Urgency ${task.urgency}`}
+                  title={urgencyLabel(task.urgency)}
                 />
               </TableCell>
               <TableCell>
@@ -116,15 +123,19 @@ export function TaskTable({ tasks, loading, onStatusChange }: TaskTableProps) {
               </TableCell>
               <TableCell>
                 {onStatusChange ? (
-                  <select
+                  <Select
                     value={task.status}
-                    onChange={e => onStatusChange(task.id, e.target.value as TaskStatus)}
-                    className="rounded border border-border bg-background px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    onValueChange={(val) => onStatusChange(task.id, val as TaskStatus)}
                   >
-                    {STATUSES.map(s => (
-                      <option key={s} value={s}>{statusLabel(s)}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger size="sm" className="h-7 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUSES.map(s => (
+                        <SelectItem key={s} value={s}>{statusLabel(s)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Badge variant={STATUS_VARIANT[task.status]}>
                     {statusLabel(task.status)}
