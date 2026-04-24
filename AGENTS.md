@@ -33,14 +33,20 @@ The success bar is:
 ## 2. Product Context
 
 The real-world source problem comes from SPSU, the Singapore Polytechnic Students' Union.
-SPSU runs many student events with volunteer committees, and event coordination is currently buried inside documents and chat threads.
+SPSU runs many student events with volunteer committees, and event coordination is currently buried inside recordings, notes, minutes, and chat threads.
 
 The important business problem is not "secretaries hate formatting."
-The important business problem is:
+The important business problems are:
 
-"CCs, VCCs, advisors, and EXCO leaders do not have real-time visibility into what is happening across active events. The source of truth is buried in meeting documents that nobody reads between meetings."
+1. "CCs, VCCs, advisors, and EXCO leaders do not have real-time visibility into what is happening across active events."
+2. "Organizations create too much shared information, but not enough role-relevant information — the wrong people are forced to read the wrong level of detail."
+3. "Secretaries still have to turn meetings into formal documentation by hand after every session."
 
 This repo should preserve that framing.
+
+The core differentiator is:
+
+**Most AI meeting tools generate one summary for everyone. This product turns one meeting into role-specific operational briefings and usable formal documentation, so each person sees only what they need to act on.**
 
 ### SPSU roles that matter to the product
 
@@ -55,7 +61,7 @@ This repo should preserve that framing.
 - There are many events in one academic year
 - Multiple events can run at the same time
 - One person can be assigned across multiple events
-- The real source material is messy meeting notes, not clean task data
+- The real source material is meeting audio or recordings, not clean task data — transcription is step one
 - Task urgency matters because deadlines and event dates are near
 - A believable demo needs realistic event names, people, blockers, and deadlines
 
@@ -63,30 +69,43 @@ This repo should preserve that framing.
 
 The MVP is exactly this:
 
-`meeting notes -> Claude extraction -> saved tasks -> live dashboard -> Genspark natural-language query`
+`meeting audio -> Transcription Agent -> Meeting Agent (structured state) -> Attention Routing Agent (role briefings) -> Document Agent (minutes draft) + Risk Agent (risk signals) -> live dashboard -> Genspark natural-language query`
+
+### Agent system (in pipeline order)
+
+1. **Transcription Agent** — converts uploaded meeting audio into transcript text
+2. **Meeting Agent** — converts transcript into structured operational state (tasks, owners, deadlines, blockers, decisions, urgency)
+3. **Attention Routing Agent** — generates 4 role-specific briefings from the same state (Secretary / OC / CC VCC / EXCO) — **this is the core differentiator**
+4. **Document Agent** — generates secretary-usable minutes draft from transcript + structured state
+5. **Risk Agent** — derives risk signals (overloaded person, unowned blocker, critical-path slip)
+6. **Query Agent** — natural-language question over live operational state (Genspark)
 
 ### Must ship
 
-- Secretary can paste raw meeting notes into the app
-- Server-side AI extraction turns notes into structured JSON
-- Tasks can be reviewed quickly before being saved or published
-- Data is stored in Supabase from day one
-- Home view shows active events and cross-event visibility
-- Event detail view shows tasks sorted by urgency and blockers
-- Genspark powers one natural-language query flow over task data
+- Secretary can upload or capture meeting audio
+- Transcription Agent produces transcript text
+- Meeting Agent produces structured operational state saved to Supabase
+- Attention Routing Agent produces 4 role-based briefings (Secretary / OC / CC VCC / EXCO)
+- Document Agent produces at least one secretary-usable minutes draft
+- Tasks can be reviewed and edited before publishing
+- Home view shows active events with cross-event risk signals
+- Event detail view shows task table + role briefing tabs + minutes preview
+- One or two believable risk signals visible in the UI
+- Seeded demo data makes the system feel real
 
 ### Strongly preferred if time allows
 
 - conflict banner or cross-event warning for people double-booked across events
-- small review/edit step before publish
-- believable seeded demo data checked into the repo
+- "what changed since last meeting?" delta summary
+- editable minutes preview before finalizing
+- one narrow Query Agent (Genspark) flow
 
 ### Stretch only
 
 - Telegram alerts
 - scheduled background agents
-- audio transcription
-- polished document export
+- full live in-meeting streaming transcription
+- polished docx export
 - rich calendar views
 - full document lifecycle automation
 
@@ -333,22 +352,25 @@ Do not dump secrets or full private note bodies into logs.
 ### Claude usage
 
 Claude is for:
-- task extraction
-- urgency inference
-- identifying blockers
-- optionally identifying cross-event conflicts from known context
+- Meeting Agent: transcript → structured operational state (tasks, owners, deadlines, blockers, decisions, urgency)
+- Attention Routing Agent: structured state → 4 role-specific briefings (Secretary / OC / CC VCC / EXCO)
+- Document Agent: transcript + structured state → secretary-usable minutes draft
+- Risk Agent: structured state → risk signals
+- urgency inference and cross-event conflict detection
 
 Claude is not for:
 - client-side calls
 - ornamental copy generation during the sprint
 - replacing the dashboard or query system itself
+- transcription (use Groq Whisper or equivalent for the Transcription Agent)
 
 Claude guidance:
 - use the Anthropic Messages API from server code only
 - prefer the latest stable Sonnet-tier model available to the team
 - if the team has already validated a prompt on a pinned model, do not swap models close to demo time without retesting
 - parse structured JSON, then validate it
-- test the extraction prompt on at least 3 sample note inputs before trusting it
+- test extraction and briefing prompts on at least 3 sample transcripts before trusting them
+- the Attention Routing Agent prompt is the most important — protect it from last-minute changes
 
 ### Genspark usage
 

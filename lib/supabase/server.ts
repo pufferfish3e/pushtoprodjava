@@ -19,7 +19,7 @@ export function createServerSupabaseClient() {
   });
 }
 
-// Use this in API routes — service role bypasses RLS entirely
+// Service role — bypasses RLS entirely. Use in API routes only.
 export function createAdminSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

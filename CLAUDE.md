@@ -14,15 +14,17 @@ Choose the smallest implementation that makes the demo stronger and the team fas
 - Keep Claude calls server-side only
 - Use the Messages API
 - Ask Claude for structured JSON, then validate it
-- Retest the extraction prompt on fixed sample notes before changing the model or prompt near demo time
+- Retest extraction and briefing prompts on fixed sample transcripts before changing the model or prompt near demo time
 
 ## What Claude should focus on in this repo
 
-- unstructured notes -> structured tasks
-- urgency inference
-- blocker detection
-- concise, predictable outputs for the dashboard and review UI
-- code changes that preserve clear contracts between lanes
+- transcript -> structured operational state (tasks, owners, deadlines, blockers, decisions, urgency)
+- role-specific briefing generation: Secretary / OC / CC VCC / EXCO get different slices of the same state
+- urgency inference and blocker detection
+- secretary-usable minutes draft generation from transcript + structured state
+- risk signal derivation (overloaded person, unowned blocker, critical-path slip)
+- concise, predictable outputs for the dashboard briefing tabs and review UI
+- code changes that preserve clear contracts between the 6-agent pipeline stages
 
 ## What Claude should not optimize for
 

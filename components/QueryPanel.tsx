@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, Search } from "lucide-react"
+import { MarkdownContent } from "@/components/MarkdownContent"
 
 const PRESETS = [
   "What is still blocked?",
@@ -86,7 +87,7 @@ export function QueryPanel({ eventId }: QueryPanelProps) {
 
       {answer && (
         <div className="rounded-md border border-border bg-muted/30 px-4 py-3">
-          <p className="text-sm text-foreground leading-relaxed">{answer}</p>
+          <MarkdownContent text={answer} />
         </div>
       )}
     </div>
