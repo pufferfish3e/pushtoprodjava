@@ -15,34 +15,19 @@
 
 ## 🔥 Critical — fix before anything else works
 
-### Migration is incomplete
-`meetings` table is missing 3 columns that `route.ts` already writes to.
-Run this in Supabase SQL editor now:
-```sql
-alter table meetings
-  add column briefings   jsonb,
-  add column risks       jsonb,
-  add column minutes_draft text;
-```
-Without this: every `/api/process` call 500s on the insert.
+### ✅ Migration fixed
+`meetings` columns added (`briefings jsonb`, `risks jsonb`, `minutes_draft text`).
+`auth update tasks` policy added.
+All in `supabase/migrations/initialsetup.sql` — **run this fresh** (drop existing tables first if already run).
 
-### Seed demo events with known IDs
-`mock-data.ts` uses text IDs (`evt-001` etc). Real Supabase uses UUIDs.
-Either:
-- **Option A (easier):** seed events with fixed UUIDs and update mock-data.ts to match
-- **Option B:** seed events, then Dev 2 reads real IDs from Supabase instead of hardcoding
+### ✅ Demo events + tasks seeded (in migration file)
+Fixed UUIDs in `initialsetup.sql`. Tell Dev 2 the IDs:
+- Orientation Camp: `a1b2c3d4-0001-0001-0001-000000000001`
+- Freshmen Social Night: `a1b2c3d4-0002-0002-0002-000000000002`
+- Leadership Summit: `a1b2c3d4-0003-0003-0003-000000000003`
 
-Recommended Option A. Run:
-```sql
-insert into events (id, name, event_date, org_id, status) values
-  ('a1b2c3d4-0001-0001-0001-000000000001', 'Orientation Camp 2026', '2026-05-10', 'demo-org', 'active'),
-  ('a1b2c3d4-0002-0002-0002-000000000002', 'Freshmen Social Night', '2026-05-17', 'demo-org', 'active'),
-  ('a1b2c3d4-0003-0003-0003-000000000003', 'Leadership Summit',     '2026-06-01', 'demo-org', 'active');
-```
-Then update `lib/mock-data.ts` ids to match (tell Dev 2).
-
-### Add missing env key
-`GROQ_API_KEY` not in `.env.example`. Add it so teammates know it's required.
+### ✅ Env keys
+Both `GROQ_API_KEY` and `ANTHROPIC_API_KEY` present in `.env.example`.
 
 ## 🔄 Next — end-to-end test
 - [ ] Add both API keys to `.env.local`
@@ -51,9 +36,9 @@ Then update `lib/mock-data.ts` ids to match (tell Dev 2).
 - [ ] Check Supabase dashboard: rows in `meetings` and `tasks` after upload
 
 ## 🔄 Next — demo data
-- [ ] Write 3 sample SPSU meeting note fixtures as text files: `data/demo/notes-*.txt`
-- [ ] Test extraction on all 3 — verify urgency inference, blocker detection
-- [ ] Seed ~8 tasks into `tasks` table matching seeded event IDs (for Dev 2 to test dashboard reads without needing an actual audio upload)
+- [x] Write 3 sample SPSU meeting note fixtures: `data/demo/notes-orientation-camp.txt`, `notes-freshmen-social.txt`, `notes-leadership-summit.txt`
+- [x] Seed 8 tasks into `tasks` table in migration (Marcus Tan overloaded across 2 events, 2 blockers, 1 urgency-5)
+- [ ] Test extraction on all 3 notes — verify urgency inference, blocker detection, cross-event conflict surfaces
 
 ## ⏳ Later
 - [ ] Add update RLS policy on `tasks` (currently only insert — needed for status changes)
