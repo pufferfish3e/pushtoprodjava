@@ -5,7 +5,7 @@ import type { ExtractionResult, Briefings, RiskSignal, Task } from '@/lib/types'
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 }
-const MODEL = 'claude-sonnet-4-6'
+const MODEL = 'claude-opus-4-7'
 
 // Strip markdown fences Claude sometimes wraps around JSON
 function parseJSON(raw: string): unknown {
